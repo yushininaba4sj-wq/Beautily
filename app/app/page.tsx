@@ -7,7 +7,8 @@ import { shareText } from "@/lib/diagnosis";
 
 const quickLinks = [
   { href: "/app/simulate", label: "シミュレーション", desc: "髪型・髪色・メイク・完成形" },
-  { href: "/app/advisor", label: "AI美容秘書", desc: "24時間なんでも相談" },
+  { href: "/app/timeline", label: "タイムライン", desc: "要素ごとに調べる" },
+  { href: "/app/advisor", label: "美容秘書", desc: "24時間なんでも相談" },
   { href: "/app/shop", label: "買い物同行", desc: "商品が似合うか判定" },
   { href: "/app/roadmap", label: "垢抜けロードマップ", desc: "改善の優先順位" },
 ];
@@ -19,7 +20,7 @@ export default function AppHomePage() {
     <div className="space-y-6">
       <section className="gradient-hero -mx-4 rounded-3xl px-5 py-8">
         <p className="text-xs font-bold uppercase tracking-widest text-[var(--rose-dark)]">
-          Your AI Producer
+          Your Beauty Producer
         </p>
         <h1 className="font-display mt-2 text-3xl leading-tight text-[var(--ink)]">
           美容のことなら、
@@ -66,7 +67,7 @@ export default function AppHomePage() {
           <p className="text-center text-sm text-[var(--muted)]">
             まだ診断がありません。
             <br />
-            写真をアップロードしてAI分析を開始しましょう。
+            写真をアップロードして分析を開始しましょう。
           </p>
         </Card>
       )}

@@ -1,6 +1,13 @@
-import type { BeautyProfile, ChatMessage, ClosetItem, CosmeticItem } from "./types";
+import type {
+  BeautyProfile,
+  ChatMessage,
+  ClosetItem,
+  CosmeticItem,
+  TimelineEntry,
+} from "./types";
 
 const PROFILE_KEY = "beautily_profile";
+const TIMELINE_KEY = "beautily_timeline";
 const CHAT_KEY = "beautily_chat";
 const CLOSET_KEY = "beautily_closet";
 const COSMETICS_KEY = "beautily_cosmetics";
@@ -15,8 +22,46 @@ export function loadProfile(): BeautyProfile | null {
   }
 }
 
+export function loadTimeline(): TimelineEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(TIMELINE_KEY);
+    return raw ? (JSON.parse(raw) as TimelineEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function appendTimelineEntry(p: BeautyProfile, label?: string): void {
+  const entry: TimelineEntry = {
+    id: "tl_" + Date.now(),
+    profileId: p.id,
+    analyzedAt: p.analyzedAt,
+    label: label || `${p.animalFace} × ${p.personalColor}`,
+    personalColor: p.personalColor,
+    boneStructure: p.boneStructure,
+    faceType: p.faceType,
+    animalFace: p.animalFace,
+    photoUrl: p.photoUrl,
+  };
+  const list = loadTimeline().filter((e) => e.profileId !== p.id);
+  list.unshift(entry);
+  localStorage.setItem(TIMELINE_KEY, JSON.stringify(list.slice(0, 30)));
+}
+
 export function saveProfile(p: BeautyProfile): void {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  try {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    appendTimelineEntry(p);
+  } catch {
+    const slim = { ...p, photoUrl: null };
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(slim));
+      appendTimelineEntry(slim);
+    } catch {
+      /* 診断テキストだけでもアプリは動く */
+    }
+  }
 }
 
 export function loadChat(): ChatMessage[] {

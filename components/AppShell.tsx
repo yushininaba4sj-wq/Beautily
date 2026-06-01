@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: "/app", label: "ホーム", icon: "⌂" },
   { href: "/app/scan", label: "診断", icon: "◎" },
+  { href: "/app/timeline", label: "タイムライン", icon: "▤" },
   { href: "/app/chart", label: "カルテ", icon: "☰" },
-  { href: "/app/proposals", label: "提案", icon: "✦" },
   { href: "/app/menu", label: "メニュー", icon: "⋯" },
 ];
 
@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Beautily
           </Link>
           <span className="rounded-full bg-[var(--rose-light)]/40 px-2.5 py-0.5 text-[10px] font-bold text-[var(--rose-dark)]">
-            AI美容プロデューサー
+            美容プロデューサー
           </span>
         </div>
       </header>

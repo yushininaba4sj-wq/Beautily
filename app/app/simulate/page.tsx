@@ -51,7 +51,7 @@ export default function SimulatePage() {
 
   return (
     <div className="space-y-5">
-      <SectionTitle sub="Simulation" title="AIシミュレーション" />
+      <SectionTitle sub="Simulation" title="シミュレーション" />
       <p className="-mt-2 text-xs text-[var(--muted)]">
         顔写真から変更後のイメージを生成（デモ：本番は画像生成API連携）
       </p>
@@ -95,7 +95,7 @@ export default function SimulatePage() {
         >
           {generated ? (
             <>
-              <p className="text-xs font-bold opacity-80">After（AI生成イメージ）</p>
+              <p className="text-xs font-bold opacity-80">After（生成イメージ）</p>
               <p className="mt-2 font-display text-lg">
                 {tab === "finish"
                   ? "最も似合う完成形"

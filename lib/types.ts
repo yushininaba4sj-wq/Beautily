@@ -89,3 +89,15 @@ export interface CosmeticItem {
   name: string;
   category: string;
 }
+
+export interface TimelineEntry {
+  id: string;
+  profileId: string;
+  analyzedAt: string;
+  label: string;
+  personalColor: string;
+  boneStructure: string;
+  faceType: string;
+  animalFace: string;
+  photoUrl: string | null;
+}

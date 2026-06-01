@@ -22,7 +22,7 @@ function hashSeed(input: string): number {
   return Math.abs(h);
 }
 
-/** デモ用：顔写真から一貫した診断結果を生成（本番はAI APIに差し替え） */
+/** デモ用：顔写真から一貫した診断結果を生成（本番は分析APIに差し替え） */
 export function analyzePhoto(photoDataUrl: string): BeautyProfile {
   const seed = hashSeed(photoDataUrl.slice(0, 2000));
   const personalColor = pick(COLORS, seed);

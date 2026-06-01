@@ -50,7 +50,7 @@ export default function AdvisorPage() {
 
   return (
     <div className="flex flex-col gap-4" style={{ minHeight: "calc(100dvh - 140px)" }}>
-      <SectionTitle sub="24/7" title="AI美容秘書" />
+      <SectionTitle sub="24/7" title="美容秘書" />
 
       <div className="flex-1 space-y-3 overflow-y-auto pb-2">
         {messages.length === 0 && (

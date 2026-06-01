@@ -36,7 +36,7 @@ export default function ClosetPage() {
 
   return (
     <div className="space-y-5">
-      <SectionTitle title="AIクローゼット" />
+      <SectionTitle title="クローゼット" />
 
       <Card>
         <div className="flex gap-2">
@@ -65,7 +65,7 @@ export default function ClosetPage() {
       </Card>
 
       <Card>
-        <p className="text-sm font-bold">AIコーデ提案</p>
+        <p className="text-sm font-bold">コーデ提案</p>
         <ul className="mt-2 space-y-2">
           {suggestions.map((s) => (
             <li key={s} className="text-sm text-[var(--muted)]">

@@ -26,7 +26,7 @@ export default function ShopPage() {
 
   return (
     <div className="space-y-5">
-      <SectionTitle sub="Shopping" title="AI買い物同行" />
+      <SectionTitle sub="Shopping" title="買い物同行" />
       <p className="-mt-2 text-sm text-[var(--muted)]">
         服やコスメの商品名・特徴を入力（画像は今後対応）。似合うか理由付きで判定します。
       </p>

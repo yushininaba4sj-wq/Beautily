@@ -22,7 +22,7 @@ export default function RoadmapPage() {
     <div className="space-y-5">
       <SectionTitle
         sub="Glow-up Plan"
-        title="AI垢抜けロードマップ"
+        title="垢抜けロードマップ"
       />
       <p className="-mt-2 text-sm text-[var(--muted)]">
         診断結果から、最も効果の高い改善順を提案します。

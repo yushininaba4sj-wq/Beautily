@@ -4,11 +4,13 @@ import Link from "next/link";
 import { SectionTitle } from "@/components/Card";
 
 const items = [
-  { href: "/app/simulate", label: "AIシミュレーション", icon: "✨" },
-  { href: "/app/advisor", label: "AI美容秘書", icon: "💬" },
-  { href: "/app/shop", label: "AI買い物同行", icon: "🛍" },
-  { href: "/app/closet", label: "AIクローゼット", icon: "👗" },
-  { href: "/app/cosmetics", label: "AIコスメ管理", icon: "💄" },
+  { href: "/app/timeline", label: "美容タイムライン", icon: "▤" },
+  { href: "/app/proposals", label: "美容提案", icon: "✦" },
+  { href: "/app/simulate", label: "シミュレーション", icon: "✨" },
+  { href: "/app/advisor", label: "美容秘書", icon: "💬" },
+  { href: "/app/shop", label: "買い物同行", icon: "🛍" },
+  { href: "/app/closet", label: "クローゼット", icon: "👗" },
+  { href: "/app/cosmetics", label: "コスメ管理", icon: "💄" },
   { href: "/app/salon", label: "美容院サポート", icon: "✂️" },
   { href: "/app/roadmap", label: "垢抜けロードマップ", icon: "📈" },
   { href: "/app/share", label: "診断結果シェア", icon: "📱" },

@@ -28,7 +28,7 @@ export default function CosmeticsPage() {
 
   return (
     <div className="space-y-5">
-      <SectionTitle title="AIコスメ管理" />
+      <SectionTitle title="コスメ管理" />
 
       <Card>
         <div className="flex gap-2">

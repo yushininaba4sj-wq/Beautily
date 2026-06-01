@@ -1,43 +1,93 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, ScoreBar, SectionTitle, Tag } from "@/components/Card";
 import { useProfile } from "@/components/ProfileProvider";
 import { analyzePhoto } from "@/lib/diagnosis";
+import { compressPhotoDataUrl } from "@/lib/imageCompress";
+
+type Phase = "idle" | "preparing" | "analyzing" | "done" | "error";
 
 export default function ScanPage() {
   const { profile, setProfile } = useProfile();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [progress, setProgress] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
   const [result, setResult] = useState(profile);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(profile?.photoUrl ?? null);
 
-  const runAnalysis = (dataUrl: string) => {
-    setLoading(true);
-    setTimeout(() => {
-      const p = analyzePhoto(dataUrl);
+  useEffect(() => {
+    if (profile && !result) {
+      setResult(profile);
+      setPreviewUrl(profile.photoUrl);
+      setPhase("done");
+    }
+  }, [profile, result]);
+
+  const runAnalysis = async (rawDataUrl: string) => {
+    setErrorMsg("");
+    setPhase("preparing");
+    setProgress(15);
+    setPreviewUrl(rawDataUrl);
+
+    try {
+      const compressed = await compressPhotoDataUrl(rawDataUrl);
+      setProgress(45);
+      setPhase("analyzing");
+      setPreviewUrl(compressed);
+
+      await new Promise((r) => setTimeout(r, 600));
+      setProgress(75);
+
+      const p = analyzePhoto(compressed);
+      setProgress(100);
+
       setProfile(p);
       setResult(p);
-      setLoading(false);
-    }, 2200);
+      setPhase("done");
+    } catch (e) {
+      console.error("Beautily scan:", e);
+      setPhase("error");
+      setErrorMsg(
+        e instanceof Error
+          ? e.message
+          : "分析できませんでした。別の写真をお試しください。"
+      );
+      setProgress(0);
+    }
   };
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (inputRef.current) inputRef.current.value = "";
     if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setPhase("error");
+      setErrorMsg("画像ファイルを選んでください。");
+      return;
+    }
+
     const reader = new FileReader();
+    reader.onerror = () => {
+      setPhase("error");
+      setErrorMsg("写真の読み込みに失敗しました。");
+    };
     reader.onload = () => {
-      if (typeof reader.result === "string") runAnalysis(reader.result);
+      if (typeof reader.result === "string") {
+        void runAnalysis(reader.result);
+      }
     };
     reader.readAsDataURL(file);
   };
 
+  const loading = phase === "preparing" || phase === "analyzing";
+
   return (
     <div className="space-y-6">
-      <SectionTitle
-        sub="AI Analysis"
-        title="顔写真から自動分析"
-      />
+      <SectionTitle sub="Analysis" title="顔写真から自動分析" />
       <p className="-mt-2 text-sm text-[var(--muted)]">
         パーソナルカラー・骨格・顔タイプ・動物顔・垢抜けポイントまで一括診断。
       </p>
@@ -47,22 +97,21 @@ export default function ScanPage() {
           ref={inputRef}
           type="file"
           accept="image/*"
-          capture="user"
           className="hidden"
           onChange={onFile}
         />
-        {result?.photoUrl ? (
+        {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={result.photoUrl}
+            src={previewUrl}
             alt="診断写真"
             className="mx-auto mb-4 aspect-square max-h-56 w-full rounded-2xl object-cover"
           />
         ) : (
           <div
             className="mb-4 flex aspect-square max-h-56 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--rose-light)] bg-[var(--cream)]"
-            onClick={() => inputRef.current?.click()}
-            onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
+            onClick={() => !loading && inputRef.current?.click()}
+            onKeyDown={(e) => e.key === "Enter" && !loading && inputRef.current?.click()}
             role="button"
             tabIndex={0}
           >
@@ -78,20 +127,57 @@ export default function ScanPage() {
           onClick={() => inputRef.current?.click()}
           className="w-full rounded-xl bg-[var(--ink)] py-3 text-sm font-bold text-white disabled:opacity-50"
         >
-          {loading ? "AI分析中…" : result ? "別の写真で再診断" : "写真を選ぶ"}
+          {loading
+            ? phase === "preparing"
+              ? "写真を準備中…"
+              : "分析中…"
+            : result
+              ? "別の写真で再診断"
+              : "写真を選ぶ"}
         </button>
       </Card>
 
       {loading && (
         <Card className="text-center">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[var(--rose-light)] border-t-[var(--rose-dark)]" />
-          <p className="mt-3 text-sm font-semibold">AIが顔を分析しています</p>
-          <p className="text-xs text-[var(--muted)]">パーソナルカラー・骨格・魅力…</p>
+          <p className="mt-3 text-sm font-semibold">
+            {phase === "preparing" ? "写真を最適化しています" : "顔を分析しています"}
+          </p>
+          <div className="mx-auto mt-3 h-2 max-w-xs overflow-hidden rounded-full bg-[var(--cream)]">
+            <div
+              className="h-full rounded-full bg-[var(--rose-dark)] transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-[var(--muted)]">{progress}%</p>
         </Card>
       )}
 
-      {result && !loading && (
+      {phase === "error" && errorMsg && (
+        <Card className="border border-rose-200 bg-rose-50/80">
+          <p className="text-sm font-semibold text-rose-800">{errorMsg}</p>
+          <button
+            type="button"
+            className="mt-3 text-sm font-bold text-[var(--rose-dark)]"
+            onClick={() => {
+              setPhase("idle");
+              setErrorMsg("");
+              inputRef.current?.click();
+            }}
+          >
+            もう一度選ぶ
+          </button>
+        </Card>
+      )}
+
+      {result && phase === "done" && !loading && (
         <>
+          <Card className="border border-[var(--rose-light)]/50 bg-[var(--cream)]/40">
+            <p className="text-center text-sm font-bold text-[var(--rose-dark)]">
+              分析が完了しました
+            </p>
+          </Card>
+
           <Card>
             <SectionTitle title="診断サマリー" />
             <div className="flex flex-wrap gap-2">
@@ -148,10 +234,10 @@ export default function ScanPage() {
 
           <div className="flex gap-3">
             <Link
-              href="/app/chart"
+              href="/app/timeline"
               className="flex-1 rounded-xl bg-[var(--rose-dark)] py-3 text-center text-sm font-bold text-white"
             >
-              美容カルテへ
+              タイムラインへ
             </Link>
             <Link
               href="/app/proposals"

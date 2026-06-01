@@ -2,15 +2,19 @@ import Link from "next/link";
 
 const features = [
   {
-    title: "AI自動分析",
+    title: "自動分析",
     desc: "パーソナルカラー・骨格・顔タイプ・動物顔・魅力・垢抜けポイントを一括診断。",
+  },
+  {
+    title: "美容タイムライン",
+    desc: "要素ごとに絞って調べられる。診断履歴も時系列で確認。",
   },
   {
     title: "美容カルテ",
     desc: "診断結果を保存。いつでも自分のタイプと似合う系統を確認。",
   },
   {
-    title: "AI提案",
+    title: "美容提案",
     desc: "メイク・髪型・髪色・ファッション・小物まで、あなた専用に提案。",
   },
   {
@@ -18,12 +22,8 @@ const features = [
     desc: "髪型・髪色・メイク・完成形・理想像まで、変更後の自分をプレビュー。",
   },
   {
-    title: "AI美容秘書",
+    title: "美容秘書",
     desc: "24時間質問OK。服・コスメ・前髪・デートコーデまで相談。",
-  },
-  {
-    title: "一気通貫",
-    desc: "買い物同行・クローゼット・コスメ管理・美容院サポート・ロードマップ。",
   },
 ];
 
@@ -47,7 +47,7 @@ export default function LandingPage() {
       <section className="gradient-hero px-6 pt-28 pb-16 md:pt-36 md:pb-24">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-[var(--rose-dark)]">
-            AI Beauty Producer
+            Beauty Producer
           </p>
           <h1 className="font-display mt-4 text-4xl leading-tight font-medium text-[var(--ink)] md:text-6xl">
             美容のことなら、
@@ -56,7 +56,7 @@ export default function LandingPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[var(--muted)]">
             顔写真1枚から、魅力・似合うもの・垢抜ける方法・買うべきもの・理想像への近づき方まで。
-            診断で終わらず、あなた専属のAI美容プロデューサーが
+            診断で終わらず、あなた専属の美容プロデューサーが
             <strong className="text-[var(--ink)]">「一番似合う完成形」</strong>
             まで導きます。
           </p>
@@ -71,10 +71,10 @@ export default function LandingPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-display text-center text-3xl font-medium md:text-4xl">
-          あなた専属のAI美容コンサルタント
+          あなた専属の美容コンサルタント
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-center text-sm text-[var(--muted)]">
-          分析 · 提案 · シミュレーション · 買い物相談 · コーデ · 美容相談 · 垢抜け計画
+          分析 · タイムライン · 提案 · シミュレーション · 買い物相談 · コーデ · 美容相談 · 垢抜け計画
         </p>
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (

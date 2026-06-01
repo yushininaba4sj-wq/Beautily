@@ -23,7 +23,7 @@ export default function ProposalsPage() {
   if (!profile) {
     return (
       <div className="space-y-4">
-        <SectionTitle title="AI提案" />
+        <SectionTitle title="美容提案" />
         <Card>
           <p className="text-sm text-[var(--muted)]">先に診断を完了してください。</p>
           <Link href="/app/scan" className="mt-3 inline-block text-sm font-bold text-[var(--rose-dark)]">
@@ -37,7 +37,7 @@ export default function ProposalsPage() {
   return (
     <div className="space-y-5">
       <SectionTitle
-        sub="AI Proposals"
+        sub="Proposals"
         title="あなたに似合う提案"
       />
 
