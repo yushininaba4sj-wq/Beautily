@@ -8,8 +8,8 @@ type SimTab = "hair" | "color" | "makeup" | "ideal" | "finish";
 
 const hairOpts = ["ボブ", "ロング", "レイヤー", "前髪あり", "前髪なし"];
 const colorOpts = ["ミルクティー", "グレージュ", "ピンクブラウン", "ラベンダー", "黒髪"];
-const makeupOpts = ["韓国アイドル風", "清楚系", "女優系", "大人っぽい", "ガーリー"];
-const idealOpts = ["韓国アイドル系", "女優系", "モデル系", "お姉さん系"];
+const makeupOpts = ["韓流きれいめ", "清楚系", "女優系", "大人っぽい", "ガーリー"];
+const idealOpts = ["韓国スター系", "女優系", "モデル系", "お姉さん系"];
 
 export default function SimulatePage() {
   const { profile } = useProfile();
@@ -53,7 +53,7 @@ export default function SimulatePage() {
     <div className="space-y-5">
       <SectionTitle sub="Simulation" title="シミュレーション" />
       <p className="-mt-2 text-xs text-[var(--muted)]">
-        顔写真から変更後のイメージを生成（デモ：本番は画像生成API連携）
+        顔写真から、髪型・髪色・メイクの変更後イメージをプレビューできます。
       </p>
 
       <div className="flex gap-1 overflow-x-auto pb-1">
@@ -102,7 +102,7 @@ export default function SimulatePage() {
                   : selected.join(" · ") || "選択してください"}
               </p>
               <p className="mt-2 text-[10px] opacity-70">
-                ※デモ表示。実装時は画像生成APIで差し替え
+                ※プレビュー表示（実際の仕上がりは美容師・メイクで調整してください）
               </p>
             </>
           ) : (

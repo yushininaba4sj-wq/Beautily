@@ -22,7 +22,7 @@ function hashSeed(input: string): number {
   return Math.abs(h);
 }
 
-/** デモ用：顔写真から一貫した診断結果を生成（本番は分析APIに差し替え） */
+/** デモ用：顔写真から一貫した診断結果を生成 */
 export function analyzePhoto(photoDataUrl: string): BeautyProfile {
   const seed = hashSeed(photoDataUrl.slice(0, 2000));
   const personalColor = pick(COLORS, seed);
@@ -39,7 +39,7 @@ export function analyzePhoto(photoDataUrl: string): BeautyProfile {
     faceType,
     animalFace,
     firstImpressions: ["清楚系", "知的系", "美人系"],
-    beautyStyles: ["韓国アイドル系", "女優系", "淡色女子系"],
+    beautyStyles: ["韓国スター系", "女優系", "淡色女子系"],
     charm: {
       eyePower: 72 + (seed % 20),
       contour: 68 + (seed % 25),
@@ -61,7 +61,7 @@ export function analyzePhoto(photoDataUrl: string): BeautyProfile {
     roadmap: [],
     makeup: {
       眉毛: ["やわらかアーチ", "薄めで縦ライン"],
-      アイメイク: ["ブラウンピンク", "涙袋ハイライト"],
+      目元メイク: ["ブラウンピンク", "涙袋ハイライト"],
       涙袋: ["ペールピンク", "控えめグリッター"],
       チーク: ["頬骨上・斜め", "コーラルピンク"],
       リップ: ["ローズベージュ", "ティント"],

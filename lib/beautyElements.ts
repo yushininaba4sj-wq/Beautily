@@ -132,7 +132,7 @@ export const ELEMENT_ITEMS: ElementItem[] = [
     categoryId: "animal",
     name: "猫顔",
     summary: "つり目・シャープな目元。ミステリアスで大人っぽい魅力。",
-    tips: ["アイライン", "グレージュ髪", "きれいめカジュアル"],
+    tips: ["目元ライン", "グレージュ髪", "きれいめカジュアル"],
   },
   {
     id: "animal-dog",
@@ -207,7 +207,7 @@ export const ELEMENT_ITEMS: ElementItem[] = [
   {
     id: "style-korea",
     categoryId: "style",
-    name: "韓国アイドル系",
+    name: "韓国スター系",
     summary: "ツヤ肌・グラデ・韓国ヘア。今っぽいきれいめカジュアル。",
     tips: ["涙袋", "オーバーリップ", "レイヤー"],
   },
@@ -251,7 +251,7 @@ export const ELEMENT_ITEMS: ElementItem[] = [
     categoryId: "charm",
     name: "目力",
     summary: "目元の印象力。メイクで最も変化が出やすいパーツ。",
-    tips: ["マスカラの付け方", "アイラインの角度", "涙袋の入れ方"],
+    tips: ["マスカラの付け方", "目元ラインの角度", "涙袋の入れ方"],
   },
   {
     id: "charm-contour",

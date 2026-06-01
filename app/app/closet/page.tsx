@@ -30,7 +30,7 @@ export default function ClosetPage() {
     ? [
         `今日は「${profile.matchingStyles[0]}」で、${profile.fashion[0]}×${profile.fashion[1] || "きれいめ"}がおすすめ。`,
         `登録${items.length}点から：白シャツ＋ハイウエストで着回し。`,
-        `不足アイテム：淡色のニット、きれいめパンツ。`,
+        `足りない服：淡色のニット、きれいめパンツ。`,
       ]
     : ["診断後にコーデ提案が有効になります。"];
 

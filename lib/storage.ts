@@ -12,11 +12,25 @@ const CHAT_KEY = "beautily_chat";
 const CLOSET_KEY = "beautily_closet";
 const COSMETICS_KEY = "beautily_cosmetics";
 
+function migrateProfile(p: BeautyProfile): BeautyProfile {
+  const makeup = { ...p.makeup };
+  if (makeup.アイメイク && !makeup.目元メイク) {
+    makeup.目元メイク = makeup.アイメイク;
+    delete makeup.アイメイク;
+  }
+  const beautyStyles = p.beautyStyles.map((s) => {
+    const v = s as string;
+    return v === "韓国アイドル系" ? "韓国スター系" : s;
+  });
+  return { ...p, makeup, beautyStyles };
+}
+
 export function loadProfile(): BeautyProfile | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
-    return raw ? (JSON.parse(raw) as BeautyProfile) : null;
+    if (!raw) return null;
+    return migrateProfile(JSON.parse(raw) as BeautyProfile);
   } catch {
     return null;
   }

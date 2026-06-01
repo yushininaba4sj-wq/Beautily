@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "Beautily — 美容プロデューサー",
   description:
     "顔写真1枚から診断・提案・シミュレーション・買い物相談まで。あなた専属の美容コンサルタントが、一番似合う完成形まで導きます。",
+  other: { "build-tag": "2026-06-02-no-ai" },
 };
 
 export default function RootLayout({

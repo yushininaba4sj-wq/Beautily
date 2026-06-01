@@ -25,7 +25,7 @@ export type FirstImpression =
   | "知的系";
 
 export type BeautyStyle =
-  | "韓国アイドル系"
+  | "韓国スター系"
   | "女優系"
   | "モデル系"
   | "フレンチガーリー系"

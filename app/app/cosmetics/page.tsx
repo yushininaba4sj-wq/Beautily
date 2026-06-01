@@ -59,7 +59,7 @@ export default function CosmeticsPage() {
             <p className="text-sm font-bold">今日のメイク提案</p>
             <ul className="mt-2 space-y-1 text-sm text-[var(--muted)]">
               <li>· 眉毛：{profile.makeup.眉毛?.[0]}</li>
-              <li>· アイメイク：{profile.makeup.アイメイク?.[0]}</li>
+              <li>· 目元メイク：{profile.makeup.目元メイク?.[0]}</li>
               <li>· リップ：{profile.makeup.リップ?.[0]}</li>
               <li>· 肌：{profile.makeup.肌質?.[0]}</li>
             </ul>
