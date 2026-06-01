@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, SectionTitle } from "@/components/Card";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { useProfile } from "@/components/ProfileProvider";
+import { compressPhotoDataUrl } from "@/lib/imageCompress";
 import { MAX_PHOTOS } from "@/lib/photos";
 import {
   buildFinishPreset,
@@ -15,17 +16,31 @@ import {
   type LookCategory,
   type LookPreset,
 } from "@/lib/lookPresets";
+import {
+  buildPresetFromReference,
+  loadCustomPresets,
+  saveCustomPreset,
+  type SavedCustomPreset,
+} from "@/lib/referenceStyle";
 import { renderLookPreview } from "@/lib/lookRenderer";
 
 type SimTab = LookCategory;
 
-const tabs: { id: SimTab; label: string }[] = [
-  { id: "hairColor", label: "髪色" },
-  { id: "hairStyle", label: "髪型" },
-  { id: "makeup", label: "メイク" },
-  { id: "fashion", label: "ファッション" },
-  { id: "finish", label: "完成形" },
+const tabs: { id: SimTab; label: string; hint: string }[] = [
+  { id: "hairColor", label: "髪色", hint: "髪だけ色変更" },
+  { id: "hairStyle", label: "髪型", hint: "前髪・長さの印象" },
+  { id: "makeup", label: "メイク", hint: "リップ・チーク・目元" },
+  { id: "fashion", label: "ファッション", hint: "服の色・系統" },
+  { id: "finish", label: "完成形", hint: "全部まとめて" },
 ];
+
+const tabRefLabel: Record<SimTab, string> = {
+  hairColor: "髪色の参考画像",
+  hairStyle: "髪型の参考画像",
+  makeup: "メイクの参考画像",
+  fashion: "服・コーデの参考画像",
+  finish: "なりたい雰囲気の参考画像",
+};
 
 function cacheKey(photoId: string, presetId: string) {
   return `${photoId}:${presetId}`;
@@ -47,12 +62,18 @@ export default function SimulatePage() {
   const cacheRef = useRef(cache);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customPresets, setCustomPresets] = useState<SavedCustomPreset[]>([]);
+  const refInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     cacheRef.current = cache;
   }, [cache]);
 
-  const presets = useMemo(() => {
+  useEffect(() => {
+    setCustomPresets(loadCustomPresets());
+  }, []);
+
+  const basePresets = useMemo(() => {
     if (tab === "finish" && profile) {
       return [
         buildFinishPreset(
@@ -81,9 +102,16 @@ export default function SimulatePage() {
     return base;
   }, [tab, profile]);
 
-  const picked = presets.find((p) => p.id === pickedId) || null;
+  const tabCustoms = useMemo(
+    () => customPresets.filter((p) => p.category === tab),
+    [customPresets, tab]
+  );
 
+  const presets = useMemo(() => [...tabCustoms, ...basePresets], [tabCustoms, basePresets]);
+
+  const picked = presets.find((p) => p.id === pickedId) || null;
   const photoId = activePhoto?.id ?? "default";
+  const activeTab = tabs.find((t) => t.id === tab);
 
   useEffect(() => {
     setCache({});
@@ -115,9 +143,7 @@ export default function SimulatePage() {
         cacheRef.current = { ...cacheRef.current, [key]: imageUrl };
         setPreviewUrl(imageUrl);
       } catch (e) {
-        const msg =
-          e instanceof Error ? e.message : "画像を生成できませんでした";
-        setError(msg);
+        setError(e instanceof Error ? e.message : "画像を生成できませんでした");
       } finally {
         setLoading(false);
       }
@@ -145,19 +171,46 @@ export default function SimulatePage() {
     setError(null);
   };
 
-  // タブ切替時は先頭スタイルを自動選択してプレビュー生成
   useEffect(() => {
     if (!activePhotoUrl || presets.length === 0) return;
     const first = presets[0];
     setPickedId(first.id);
     const key = cacheKey(photoId, first.id);
-    const cached = cacheRef.current[key];
-    if (cached) {
-      setPreviewUrl(cached);
+    if (cacheRef.current[key]) {
+      setPreviewUrl(cacheRef.current[key]);
       return;
     }
     void generateOne(first);
   }, [tab, activePhotoUrl, photoId, presets, generateOne]);
+
+  const onReferenceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (refInputRef.current) refInputRef.current.value = "";
+    if (!file || !activePhotoUrl) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const raw = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () =>
+          typeof reader.result === "string"
+            ? resolve(reader.result)
+            : reject(new Error("読み込み失敗"));
+        reader.onerror = () => reject(new Error("読み込み失敗"));
+        reader.readAsDataURL(file);
+      });
+      const compressed = await compressPhotoDataUrl(raw, 480, 0.85);
+      const preset = await buildPresetFromReference(compressed, tab, "マイ参考");
+      const saved = saveCustomPreset(preset);
+      setCustomPresets(saved);
+      onPick(preset);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "参考画像の処理に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!profile) {
     return (
@@ -165,7 +218,7 @@ export default function SimulatePage() {
         <SectionTitle sub="Try On" title="新しい私を試す" />
         <Card>
           <p className="text-sm text-[var(--muted)]">
-            診断後に、あなたの写真で髪色・メイク・ファッションの変更イメージを確認できます。
+            診断後に、髪色・髪型・メイク・服を本気でプレビューできます。
           </p>
           <Link
             href="/app/scan"
@@ -181,9 +234,7 @@ export default function SimulatePage() {
   if (!activePhotoUrl) {
     return (
       <Card>
-        <p className="text-sm text-[var(--muted)]">
-          顔写真がある診断結果が必要です。もう一度診断してください。
-        </p>
+        <p className="text-sm text-[var(--muted)]">顔写真がある診断結果が必要です。</p>
         <Link href="/app/scan" className="mt-3 inline-block text-sm font-bold text-[var(--rose-dark)]">
           診断へ →
         </Link>
@@ -193,9 +244,10 @@ export default function SimulatePage() {
 
   return (
     <div className="space-y-5">
-      <SectionTitle sub="Try On" title="新しい私を試す" />
+      <SectionTitle sub="Premium Try-On" title="新しい私を試す" />
       <p className="-mt-2 text-sm text-[var(--muted)]">
-        髪色・髪型・メイク（チーク高め）・服の色味まで、はっきり変わるプレビュー。写真を選んでスタイルをタップ。
+        タブごとに<strong className="text-[var(--ink)]">髪色・髪型・メイク・服</strong>
+        を分けて反映。参考画像を送れば、その色や雰囲気をあなたに合わせて試せます。
       </p>
 
       {photos.length > 0 && (
@@ -208,12 +260,6 @@ export default function SimulatePage() {
             maxPhotos={MAX_PHOTOS}
             compact
           />
-          <Link
-            href="/app/scan"
-            className="mt-2 block text-center text-xs font-bold text-[var(--rose-dark)]"
-          >
-            新しい写真を追加 →
-          </Link>
         </Card>
       )}
 
@@ -234,12 +280,59 @@ export default function SimulatePage() {
         ))}
       </div>
 
+      {activeTab && (
+        <p className="text-center text-[11px] font-semibold text-[var(--rose-dark)]">
+          いまのモード：{activeTab.hint}
+        </p>
+      )}
+
+      <Card className="border-2 border-dashed border-[var(--rose-dark)]/40 bg-[var(--cream)]/50">
+        <p className="text-sm font-bold text-[var(--ink)]">📎 {tabRefLabel[tab]}</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          気になる髪色・服・メイクの写真を送ると、色を抽出してあなたに反映します。
+        </p>
+        <input
+          ref={refInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => void onReferenceFile(e)}
+        />
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => refInputRef.current?.click()}
+          className="mt-3 w-full rounded-xl bg-[var(--rose-dark)] py-3 text-sm font-bold text-white disabled:opacity-50"
+        >
+          参考画像を送って試す
+        </button>
+        {tabCustoms.length > 0 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto">
+            {tabCustoms.map((c) =>
+              c.fromReference ? (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onPick(c)}
+                  className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-2 ${
+                    pickedId === c.id ? "ring-[var(--rose-dark)]" : "ring-transparent"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.fromReference} alt="" className="h-full w-full object-cover" />
+                </button>
+              ) : null
+            )}
+          </div>
+        )}
+      </Card>
+
       <Card className="p-3">
-        <p className="mb-2 text-center text-xs font-bold text-[var(--muted)]">プレビュー</p>
+        <p className="mb-2 text-center text-xs font-bold text-[var(--muted)]">Before → After</p>
         {loading && (
-          <div className="py-8 text-center">
+          <div className="py-10 text-center">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[var(--rose-light)] border-t-[var(--rose-dark)]" />
-            <p className="mt-3 text-sm font-semibold">生成中…</p>
+            <p className="mt-3 text-sm font-semibold">反映中…</p>
           </div>
         )}
         {!loading && (
@@ -255,11 +348,11 @@ export default function SimulatePage() {
               <img
                 src={previewUrl}
                 alt={picked?.name || "変更イメージ"}
-                className="aspect-[3/4] w-full rounded-xl object-cover ring-2 ring-[var(--rose-dark)]/40"
+                className="aspect-[3/4] w-full rounded-xl object-cover ring-2 ring-[var(--rose-dark)]"
               />
             ) : (
               <div className="flex aspect-[3/4] items-center justify-center rounded-xl bg-[var(--cream)] text-center text-xs text-[var(--muted)]">
-                {error ? "生成できませんでした" : "スタイルを選ぶと表示されます"}
+                {error ? "生成できませんでした" : "スタイルを選択"}
               </div>
             )}
           </div>
@@ -267,9 +360,9 @@ export default function SimulatePage() {
         {picked && !loading && (
           <p className="mt-2 text-center text-xs font-bold text-[var(--rose-dark)]">
             {picked.name}
-            <span className="ml-1 font-normal text-[var(--muted)]">
-              ({categoryLabel(picked.category)})
-            </span>
+            {picked.fromReference && (
+              <span className="ml-1 text-[10px] font-normal">（参考画像から）</span>
+            )}
           </p>
         )}
       </Card>
@@ -277,20 +370,11 @@ export default function SimulatePage() {
       {error && (
         <Card className="border border-red-200 bg-red-50/50">
           <p className="text-sm text-red-800">{error}</p>
-          {picked && (
-            <button
-              type="button"
-              onClick={() => void generateOne(picked)}
-              className="mt-2 text-xs font-bold text-[var(--rose-dark)]"
-            >
-              再試行 →
-            </button>
-          )}
         </Card>
       )}
 
       <Card>
-        <p className="text-xs font-bold text-[var(--ink)]">スタイルを選ぶ</p>
+        <p className="text-xs font-bold text-[var(--ink)]">プリセット</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {presets.map((p) => (
             <button
@@ -301,45 +385,25 @@ export default function SimulatePage() {
               className={`rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
                 pickedId === p.id
                   ? "bg-[var(--rose-dark)] text-white"
-                  : "bg-[var(--cream)] text-[var(--ink)]"
+                  : p.fromReference
+                    ? "bg-[var(--rose-light)]/50 text-[var(--rose-dark)] ring-1 ring-[var(--rose-dark)]/30"
+                    : "bg-[var(--cream)] text-[var(--ink)]"
               }`}
             >
+              {p.fromReference && "📎 "}
               {p.name}
-              {cache[cacheKey(photoId, p.id)] && (
-                <span className="ml-1 opacity-70">✓</span>
-              )}
+              {cache[cacheKey(photoId, p.id)] && <span className="ml-1 opacity-70">✓</span>}
             </button>
           ))}
         </div>
       </Card>
 
-      {picked && (
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void generateOne(picked)}
-          className="w-full rounded-xl border border-[var(--rose-light)] py-3 text-sm font-bold text-[var(--ink)] disabled:opacity-50"
-        >
-          {loading ? "生成中…" : "このスタイルを再生成"}
-        </button>
-      )}
-
       <Card className="bg-[var(--cream)]/60">
         <p className="text-xs leading-relaxed text-[var(--muted)]">
-          ※ 髪の色味・前髪の印象・服のトーン・メイクを写真に重ねたイメージです。サロンで「この雰囲気で」と見せる参考にしてください。
+          ※
+          髪はHSLで色替え、顔はメイクのみ、体は服色のみ反映（タブごとに分離）。参考画像は色・雰囲気を抽出。実写と完全一致する合成ではありませんが、サロン・お買い物の参考に最適です。
         </p>
       </Card>
     </div>
   );
-}
-
-function categoryLabel(cat: LookCategory): string {
-  const map: Record<LookCategory, string> = {
-    hairColor: "髪色",
-    hairStyle: "髪型",
-    makeup: "メイク",
-    fashion: "ファッション",
-    finish: "完成形",
-  };
-  return map[cat] || "";
 }

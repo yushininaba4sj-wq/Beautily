@@ -6,6 +6,8 @@ export type LookPreset = {
   id: string;
   category: LookCategory;
   name: string;
+  /** ユーザーが送った参考画像（あればサムネ表示用） */
+  fromReference?: string;
   hairTint?: { hex: string; strength: number };
   hairStyleEffect?: HairStyleEffect;
   makeup?: {
