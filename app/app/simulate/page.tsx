@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { CompareSlider } from "@/components/CompareSlider";
 import { Card, SectionTitle } from "@/components/Card";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { useProfile } from "@/components/ProfileProvider";
@@ -22,7 +23,10 @@ import {
   saveCustomPreset,
   type SavedCustomPreset,
 } from "@/lib/referenceStyle";
-import { renderLookPreview } from "@/lib/lookRenderer";
+import {
+  fetchSimulateProviders,
+  runSimulateWithPolling,
+} from "@/lib/simulateClient";
 
 type SimTab = LookCategory;
 
@@ -43,7 +47,7 @@ const tabRefLabel: Record<SimTab, string> = {
 };
 
 function cacheKey(photoId: string, presetId: string) {
-  return `${photoId}:${presetId}`;
+  return `ai:${photoId}:${presetId}`;
 }
 
 export default function SimulatePage() {
@@ -61,7 +65,10 @@ export default function SimulatePage() {
   const [cache, setCache] = useState<Record<string, string>>({});
   const cacheRef = useRef(cache);
   const [loading, setLoading] = useState(false);
+  const [progressMsg, setProgressMsg] = useState("仕上げ中…");
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [apiReady, setApiReady] = useState<boolean | null>(null);
   const [customPresets, setCustomPresets] = useState<SavedCustomPreset[]>([]);
   const refInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,6 +78,10 @@ export default function SimulatePage() {
 
   useEffect(() => {
     setCustomPresets(loadCustomPresets());
+  }, []);
+
+  useEffect(() => {
+    void fetchSimulateProviders().then((r) => setApiReady(r.configured));
   }, []);
 
   const basePresets = useMemo(() => {
@@ -135,13 +146,30 @@ export default function SimulatePage() {
 
       setLoading(true);
       setError(null);
+      setWarning(null);
       setPreviewUrl(null);
+      setProgressMsg("美容プロデューサーが仕上げ中…");
 
       try {
-        const imageUrl = await renderLookPreview(activePhotoUrl, preset);
-        setCache((c) => ({ ...c, [key]: imageUrl }));
-        cacheRef.current = { ...cacheRef.current, [key]: imageUrl };
-        setPreviewUrl(imageUrl);
+        const photo = await compressPhotoDataUrl(activePhotoUrl, 768, 0.88);
+        let referenceDataUrl: string | undefined;
+        if (preset.fromReference) {
+          referenceDataUrl = await compressPhotoDataUrl(preset.fromReference, 512, 0.85);
+        }
+
+        const { imageDataUrl, warning: warn } = await runSimulateWithPolling(
+          photo,
+          preset,
+          {
+            referenceDataUrl,
+            onProgress: setProgressMsg,
+          }
+        );
+
+        setCache((c) => ({ ...c, [key]: imageDataUrl }));
+        cacheRef.current = { ...cacheRef.current, [key]: imageDataUrl };
+        setPreviewUrl(imageDataUrl);
+        if (warn) setWarning(warn);
       } catch (e) {
         setError(e instanceof Error ? e.message : "画像を生成できませんでした");
       } finally {
@@ -246,9 +274,20 @@ export default function SimulatePage() {
     <div className="space-y-5">
       <SectionTitle sub="Premium Try-On" title="新しい私を試す" />
       <p className="-mt-2 text-sm text-[var(--muted)]">
-        タブごとに<strong className="text-[var(--ink)]">髪色・髪型・メイク・服</strong>
-        を分けて反映。参考画像を送れば、その色や雰囲気をあなたに合わせて試せます。
+        髪色・髪型・メイク・服を<strong className="text-[var(--ink)]">写真品質で</strong>
+        再生成。参考画像の雰囲気も反映できます（20〜60秒）。
       </p>
+
+      {apiReady === false && (
+        <Card className="border border-amber-200 bg-amber-50/80">
+          <p className="text-sm font-bold text-amber-900">高性能モードの設定が必要です</p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-800">
+            Vercel の Environment Variables に{" "}
+            <code className="rounded bg-white/80 px-1">GEMINI_API_KEY</code>（Google AI Studio）または{" "}
+            <code className="rounded bg-white/80 px-1">REPLICATE_API_TOKEN</code> を追加して再デプロイしてください。
+          </p>
+        </Card>
+      )}
 
       {photos.length > 0 && (
         <Card>
@@ -327,45 +366,43 @@ export default function SimulatePage() {
         )}
       </Card>
 
-      <Card className="p-3">
-        <p className="mb-2 text-center text-xs font-bold text-[var(--muted)]">Before → After</p>
+      <Card className="overflow-hidden p-3">
         {loading && (
-          <div className="py-10 text-center">
+          <div className="py-16 text-center">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[var(--rose-light)] border-t-[var(--rose-dark)]" />
-            <p className="mt-3 text-sm font-semibold">反映中…</p>
+            <p className="mt-3 text-sm font-semibold">{progressMsg}</p>
+            <p className="mt-1 text-[11px] text-[var(--muted)]">高品質生成のため少しお待ちください</p>
           </div>
         )}
-        {!loading && (
-          <div className="grid grid-cols-2 gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={activePhotoUrl}
-              alt="元の写真"
-              className="aspect-[3/4] w-full rounded-xl object-cover"
-            />
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewUrl}
-                alt={picked?.name || "変更イメージ"}
-                className="aspect-[3/4] w-full rounded-xl object-cover ring-2 ring-[var(--rose-dark)]"
-              />
-            ) : (
-              <div className="flex aspect-[3/4] items-center justify-center rounded-xl bg-[var(--cream)] text-center text-xs text-[var(--muted)]">
-                {error ? "生成できませんでした" : "スタイルを選択"}
-              </div>
-            )}
-          </div>
+        {!loading && previewUrl && (
+          <CompareSlider
+            beforeSrc={activePhotoUrl}
+            afterSrc={previewUrl}
+            beforeLabel="Before"
+            afterLabel={picked?.name || "After"}
+            caption={
+              picked
+                ? `${picked.name}${picked.fromReference ? "（参考画像）" : ""} — ${tabs.find((t) => t.id === picked.category)?.label ?? ""} · ドラッグで比較`
+                : undefined
+            }
+          />
         )}
-        {picked && !loading && (
-          <p className="mt-2 text-center text-xs font-bold text-[var(--rose-dark)]">
-            {picked.name}
-            {picked.fromReference && (
-              <span className="ml-1 text-[10px] font-normal">（参考画像から）</span>
-            )}
-          </p>
+        {!loading && !previewUrl && (
+          <div className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-xl bg-[var(--cream)] text-center">
+            <p className="text-2xl">✨</p>
+            <p className="text-sm font-bold text-[var(--ink)]">髪色やメイクを変えて</p>
+            <p className="text-xs text-[var(--muted)]">
+              {error ? "生成できませんでした" : "プリセットを選ぶか参考画像を送ってください"}
+            </p>
+          </div>
         )}
       </Card>
+
+      {warning && (
+        <Card className="border border-amber-200 bg-amber-50/50">
+          <p className="text-sm text-amber-900">{warning}</p>
+        </Card>
+      )}
 
       {error && (
         <Card className="border border-red-200 bg-red-50/50">
@@ -400,8 +437,7 @@ export default function SimulatePage() {
 
       <Card className="bg-[var(--cream)]/60">
         <p className="text-xs leading-relaxed text-[var(--muted)]">
-          ※
-          髪はHSLで色替え、顔はメイクのみ、体は服色のみ反映（タブごとに分離）。参考画像は色・雰囲気を抽出。実写と完全一致する合成ではありませんが、サロン・お買い物の参考に最適です。
+          ※ Gemini / FLUX Kontext による画像編集。同一人物・ポーズを保ちつつ髪・メイク・服を変更します。猫耳など小物がある写真は結果が不安定になることがあります。
         </p>
       </Card>
     </div>

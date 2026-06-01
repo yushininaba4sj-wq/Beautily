@@ -1,4 +1,4 @@
-import type { LookCategory, LookPreset } from "./lookPresets";
+import type { LookPreset } from "./lookPresets";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -80,37 +80,84 @@ function hslToRgb(h: number, s: number, l: number) {
   };
 }
 
-function hairMaskWeight(x: number, y: number, w: number, h: number): number {
-  if (y > h * 0.58) return 0;
-  const topBias = 1 - (y / (h * 0.58)) * 0.35;
+/** YCbCr 肌色検出 — 髪色処理から顔を守る */
+function isSkinPixel(r: number, g: number, b: number): boolean {
+  if (r < 45 && g < 45 && b < 45) return false;
+  const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+  const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+  return cb >= 75 && cb <= 130 && cr >= 130 && cr <= 178;
+}
+
+function luminance(r: number, g: number, b: number) {
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+function buildHairMask(
+  data: Uint8ClampedArray,
+  w: number,
+  h: number
+): Float32Array {
+  const mask = new Float32Array(w * h);
   const cx = w * 0.5;
-  const cy = h * 0.33;
-  const nx = (x - cx) / (w * 0.34);
-  const ny = (y - cy) / (h * 0.19);
-  const faceDist = nx * nx + ny * ny;
-  const faceBlock = faceDist < 1 ? Math.max(0, 1 - faceDist) * 0.88 : 0;
-  let weight = Math.max(0, topBias * (1 - faceBlock));
-  if (y < h * 0.2) weight = Math.max(weight, 0.85);
-  return weight;
+  const cy = h * 0.3;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = y * w + x;
+      const i = idx * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const skin = isSkinPixel(r, g, b);
+      const lum = luminance(r, g, b);
+
+      if (y > h * 0.52 || skin) {
+        mask[idx] = 0;
+        continue;
+      }
+
+      const ny = y / h;
+      const nx = (x - cx) / (w * 0.36);
+      const nyf = (y - cy) / (h * 0.22);
+      const faceEllipse = nx * nx + nyf * nyf;
+      const inFace = faceEllipse < 1;
+
+      let m = Math.max(0, 1 - ny * 1.1);
+      if (inFace) m *= Math.max(0, faceEllipse - 0.35);
+
+      if (ny < 0.35 && lum < 0.55 && !skin) m = Math.max(m, 0.8);
+      if (ny < 0.22 && !skin) m = Math.max(m, 0.55);
+
+      mask[idx] = Math.min(1, Math.max(0, m));
+    }
+  }
+
+  return featherMask(mask, w, h, 3);
 }
 
-function faceMaskWeight(x: number, y: number, w: number, h: number): number {
-  const cx = w * 0.5;
-  const cy = h * 0.42;
-  const nx = (x - cx) / (w * 0.38);
-  const ny = (y - cy) / (h * 0.28);
-  const d = nx * nx + ny * ny;
-  if (d > 1) return 0;
-  return Math.pow(1 - d, 0.7);
+function featherMask(mask: Float32Array, w: number, h: number, radius: number) {
+  const out = new Float32Array(mask.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      let count = 0;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          sum += mask[ny * w + nx];
+          count++;
+        }
+      }
+      out[y * w + x] = sum / count;
+    }
+  }
+  return out;
 }
 
-function bodyMaskWeight(x: number, y: number, w: number, h: number): number {
-  if (y < h * 0.38) return 0;
-  const t = (y - h * 0.38) / (h * 0.62);
-  return Math.min(1, t * 1.15);
-}
-
-function applyHairColorHSL(
+/** 明度を保ったまま色相だけ変える（自然な髪色） */
+function applyHairColorNatural(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
@@ -122,25 +169,29 @@ function applyHairColorHSL(
   } catch {
     return;
   }
+  const hairMask = buildHairMask(imgData.data, w, h);
   const { r: tr, g: tg, b: tb } = hexToRgb(tint.hex);
   const target = rgbToHsl(tr, tg, tb);
-  const power = Math.min(1, tint.strength);
+  const power = Math.min(0.85, tint.strength);
   const d = imgData.data;
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const mask = hairMaskWeight(x, y, w, h);
-      if (mask < 0.06) continue;
-      const i = (y * w + x) * 4;
-      const blend = mask * power;
+      const idx = y * w + x;
+      const blend = hairMask[idx] * power;
+      if (blend < 0.04) continue;
+
+      const i = idx * 4;
+      if (isSkinPixel(d[i], d[i + 1], d[i + 2])) continue;
+
       const src = rgbToHsl(d[i], d[i + 1], d[i + 2]);
       const nh = src.h * (1 - blend) + target.h * blend;
-      const ns = src.s * (1 - blend * 0.85) + Math.min(1, target.s * 1.1) * blend * 0.85;
-      const nl = src.l * (1 - blend * 0.55) + target.l * blend * 0.55;
-      const out = hslToRgb(nh, ns, nl);
-      d[i] = out.r;
-      d[i + 1] = out.g;
-      d[i + 2] = out.b;
+      const ns = src.s * (1 - blend * 0.4) + target.s * blend * 0.75;
+      const nl = src.l;
+      const out = hslToRgb(nh, Math.min(1, ns), nl);
+      d[i] = d[i] * (1 - blend) + out.r * blend;
+      d[i + 1] = d[i + 1] * (1 - blend) + out.g * blend;
+      d[i + 2] = d[i + 2] * (1 - blend) + out.b * blend;
     }
   }
   ctx.putImageData(imgData, 0, 0);
@@ -152,243 +203,182 @@ function applyHairStyle(
   h: number,
   effect: NonNullable<LookPreset["hairStyleEffect"]>
 ) {
+  const hairOnly = (fn: () => void) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(w * 0.5, h * 0.22, w * 0.48, h * 0.28, 0, 0, Math.PI * 2);
+    ctx.clip();
+    fn();
+    ctx.restore();
+  };
+
   switch (effect) {
-    case "bangs": {
-      const g = ctx.createLinearGradient(0, h * 0.08, 0, h * 0.36);
-      g.addColorStop(0, "rgba(25,20,18,0.72)");
-      g.addColorStop(0.55, "rgba(45,38,35,0.45)");
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.globalCompositeOperation = "multiply";
-      ctx.fillStyle = g;
-      ctx.fillRect(w * 0.12, 0, w * 0.76, h * 0.38);
-      break;
-    }
-    case "no-bangs": {
-      ctx.globalCompositeOperation = "screen";
-      ctx.fillStyle = "rgba(255,248,245,0.28)";
-      ctx.fillRect(w * 0.18, 0, w * 0.64, h * 0.22);
-      break;
-    }
-    case "bob": {
-      ctx.globalCompositeOperation = "multiply";
-      for (const cx of [w * 0.1, w * 0.9]) {
-        const g = ctx.createRadialGradient(cx, h * 0.4, 0, cx, h * 0.4, w * 0.38);
-        g.addColorStop(0, "rgba(35,28,25,0.4)");
+    case "bangs":
+      hairOnly(() => {
+        const g = ctx.createLinearGradient(0, h * 0.1, 0, h * 0.34);
+        g.addColorStop(0, "rgba(28,22,20,0.65)");
         g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.globalCompositeOperation = "multiply";
         ctx.fillStyle = g;
-        ctx.fillRect(0, h * 0.15, w, h * 0.5);
-      }
+        ctx.fillRect(0, 0, w, h * 0.36);
+      });
       break;
-    }
-    case "long": {
-      const g = ctx.createLinearGradient(0, h * 0.32, 0, h);
-      g.addColorStop(0, "rgba(0,0,0,0)");
-      g.addColorStop(0.35, "rgba(50,42,38,0.25)");
-      g.addColorStop(1, "rgba(30,25,22,0.5)");
-      ctx.globalCompositeOperation = "multiply";
-      ctx.fillStyle = g;
-      ctx.fillRect(0, h * 0.28, w, h * 0.72);
-      const frame = ctx.createLinearGradient(0, 0, w, 0);
-      frame.addColorStop(0, "rgba(28,22,20,0.35)");
-      frame.addColorStop(0.12, "rgba(0,0,0,0)");
-      frame.addColorStop(0.88, "rgba(0,0,0,0)");
-      frame.addColorStop(1, "rgba(28,22,20,0.35)");
-      ctx.fillStyle = frame;
-      ctx.fillRect(0, h * 0.2, w, h * 0.65);
+    case "no-bangs":
+      hairOnly(() => {
+        ctx.globalCompositeOperation = "screen";
+        ctx.fillStyle = "rgba(255,250,248,0.22)";
+        ctx.fillRect(w * 0.15, 0, w * 0.7, h * 0.2);
+      });
       break;
-    }
-    case "layer": {
-      ctx.globalCompositeOperation = "overlay";
-      const g = ctx.createLinearGradient(0, h * 0.12, 0, h * 0.48);
-      g.addColorStop(0, "rgba(255,255,255,0.15)");
-      g.addColorStop(0.5, "rgba(80,70,65,0.12)");
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h * 0.52);
+    case "bob":
+      hairOnly(() => {
+        ctx.globalCompositeOperation = "multiply";
+        for (const cx of [w * 0.15, w * 0.85]) {
+          const g = ctx.createRadialGradient(cx, h * 0.35, 0, cx, h * 0.35, w * 0.32);
+          g.addColorStop(0, "rgba(40,32,28,0.35)");
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, w, h);
+        }
+      });
       break;
-    }
+    case "long":
+      hairOnly(() => {
+        const g = ctx.createLinearGradient(0, h * 0.3, 0, h * 0.55);
+        g.addColorStop(0, "rgba(0,0,0,0)");
+        g.addColorStop(1, "rgba(45,38,32,0.3)");
+        ctx.globalCompositeOperation = "multiply";
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      });
+      break;
+    case "layer":
+      hairOnly(() => {
+        ctx.globalCompositeOperation = "soft-light";
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillRect(0, 0, w, h * 0.45);
+      });
+      break;
   }
   ctx.globalCompositeOperation = "source-over";
 }
 
-function applyMakeupMasked(
+function faceMaskWeight(x: number, y: number, w: number, h: number): number {
+  const cx = w * 0.5;
+  const cy = h * 0.4;
+  const nx = (x - cx) / (w * 0.36);
+  const ny = (y - cy) / (h * 0.26);
+  const d = nx * nx + ny * ny;
+  if (d > 1) return 0;
+  return Math.pow(1 - d, 0.8);
+}
+
+function applyMakeup(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   makeup: NonNullable<LookPreset["makeup"]>
 ) {
+  const lip = hexToRgb(makeup.lipHex);
+  const cheek = hexToRgb(makeup.cheekHex);
+  const eye = hexToRgb(makeup.eyeHex || makeup.cheekHex);
+  const s = Math.min(0.75, makeup.strength);
+  const cheekY = h * (makeup.cheekHeight ?? 0.43);
+
   let imgData: ImageData;
   try {
     imgData = ctx.getImageData(0, 0, w, h);
   } catch {
-    applyMakeupOverlay(ctx, w, h, makeup);
     return;
   }
-  const lip = hexToRgb(makeup.lipHex);
-  const cheek = hexToRgb(makeup.cheekHex);
-  const eye = hexToRgb(makeup.eyeHex || makeup.cheekHex);
-  const s = makeup.strength;
-  const cheekY = makeup.cheekHeight ?? 0.43;
   const d = imgData.data;
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const face = faceMaskWeight(x, y, w, h);
-      if (face < 0.05) continue;
+      if (face < 0.08) continue;
       const i = (y * w + x) * 4;
+      const ny = y / h;
       let r = d[i];
       let g = d[i + 1];
       let b = d[i + 2];
 
-      const ny = y / h;
-      if (ny > 0.62 && ny < 0.82 && Math.abs(x / w - 0.5) < 0.14) {
-        const lipW = face * s * 1.1;
-        r = r * (1 - lipW) + lip.r * lipW;
-        g = g * (1 - lipW) + lip.g * lipW;
-        b = b * (1 - lipW) + lip.b * lipW;
+      if (ny > 0.64 && ny < 0.8 && Math.abs(x / w - 0.5) < 0.12) {
+        const t = face * s;
+        r = r * (1 - t) + lip.r * t;
+        g = g * (1 - t) + lip.g * t;
+        b = b * (1 - t) + lip.b * t;
       }
-      if (ny > cheekY - 0.06 && ny < cheekY + 0.1) {
+      if (ny > cheekY / h - 0.05 && ny < cheekY / h + 0.08) {
         const cx = x / w;
-        if (cx < 0.42 || cx > 0.58) {
-          const ck = face * s * 0.85;
-          r = r * (1 - ck) + cheek.r * ck;
-          g = g * (1 - ck) + cheek.g * ck;
-          b = b * (1 - ck) + cheek.b * ck;
+        if (cx < 0.4 || cx > 0.6) {
+          const t = face * s * 0.7;
+          r = r * (1 - t) + cheek.r * t;
+          g = g * (1 - t) + cheek.g * t;
+          b = b * (1 - t) + cheek.b * t;
         }
       }
-      if (ny > 0.34 && ny < 0.52 && Math.abs(x / w - 0.5) < 0.22) {
-        const ew = face * s * 0.45;
-        r = r * (1 - ew) + eye.r * ew;
-        g = g * (1 - ew) + eye.g * ew;
-        b = b * (1 - ew) + eye.b * ew;
+      if (ny > 0.35 && ny < 0.5) {
+        const t = face * s * 0.35;
+        r = r * (1 - t) + eye.r * t;
+        g = g * (1 - t) + eye.g * t;
+        b = b * (1 - t) + eye.b * t;
       }
-
       d[i] = r;
       d[i + 1] = g;
       d[i + 2] = b;
     }
   }
   ctx.putImageData(imgData, 0, 0);
-  applyMakeupOverlay(ctx, w, h, makeup);
-}
-
-function applyMakeupOverlay(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  makeup: NonNullable<LookPreset["makeup"]>
-) {
-  const lip = hexToRgb(makeup.lipHex);
-  const cheek = hexToRgb(makeup.cheekHex);
-  const s = makeup.strength;
-  const cheekY = h * (makeup.cheekHeight ?? 0.43);
 
   ctx.globalCompositeOperation = "soft-light";
-  const cheekGrad = (cx: number) => {
-    const g = ctx.createRadialGradient(cx, cheekY, 0, cx, cheekY, w * 0.22);
-    g.addColorStop(0, `rgba(${cheek.r},${cheek.g},${cheek.b},${s})`);
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    return g;
-  };
-  ctx.fillStyle = cheekGrad(w * 0.26);
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = cheekGrad(w * 0.74);
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.globalCompositeOperation = "multiply";
-  const lipG = ctx.createRadialGradient(w * 0.5, h * 0.74, 0, w * 0.5, h * 0.74, w * 0.16);
-  lipG.addColorStop(0, `rgba(${lip.r},${lip.g},${lip.b},${Math.min(1, s * 1.2)})`);
+  const lipG = ctx.createRadialGradient(w * 0.5, h * 0.72, 0, w * 0.5, h * 0.72, w * 0.12);
+  lipG.addColorStop(0, `rgba(${lip.r},${lip.g},${lip.b},${s * 0.5})`);
   lipG.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = lipG;
   ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = "source-over";
 }
 
-function applyFashionMasked(
+function applyFashion(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   overlay: NonNullable<LookPreset["fashionOverlay"]>
 ) {
+  const top = hexToRgb(overlay.topHex);
+  const accent = hexToRgb(overlay.accentHex || overlay.topHex);
+  const power = Math.min(0.8, overlay.strength);
+  const yStart = h * 0.52;
+
   let imgData: ImageData;
   try {
     imgData = ctx.getImageData(0, 0, w, h);
   } catch {
-    applyFashionOverlay(ctx, w, h, overlay);
     return;
   }
-  const top = hexToRgb(overlay.topHex);
-  const accent = hexToRgb(overlay.accentHex || overlay.topHex);
-  const power = overlay.strength;
   const d = imgData.data;
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const mask = bodyMaskWeight(x, y, w, h);
-      if (mask < 0.08) continue;
+      if (y < yStart) continue;
+      const face = faceMaskWeight(x, y, w, h);
+      if (face > 0.5) continue;
+
       const i = (y * w + x) * 4;
-      const blend = mask * power;
-      const useAccent = y > h * 0.55;
+      if (isSkinPixel(d[i], d[i + 1], d[i + 2]) && y < h * 0.65) continue;
+
+      const t = ((y - yStart) / (h - yStart)) * power;
+      const useAccent = y > h * 0.72;
       const tr = useAccent ? accent.r : top.r;
       const tg = useAccent ? accent.g : top.g;
       const tb = useAccent ? accent.b : top.b;
-      d[i] = d[i] * (1 - blend) + tr * blend;
-      d[i + 1] = d[i + 1] * (1 - blend) + tg * blend;
-      d[i + 2] = d[i + 2] * (1 - blend) + tb * blend;
+      d[i] = d[i] * (1 - t) + tr * t;
+      d[i + 1] = d[i + 1] * (1 - t) + tg * t;
+      d[i + 2] = d[i + 2] * (1 - t) + tb * t;
     }
   }
   ctx.putImageData(imgData, 0, 0);
-  applyFashionOverlay(ctx, w, h, overlay);
-}
-
-function applyFashionOverlay(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  overlay: NonNullable<LookPreset["fashionOverlay"]>
-) {
-  const top = hexToRgb(overlay.topHex);
-  const accent = hexToRgb(overlay.accentHex || overlay.topHex);
-  const s = overlay.strength;
-  const y0 = h * 0.4;
-
-  const bodyGrad = ctx.createLinearGradient(0, y0, 0, h);
-  bodyGrad.addColorStop(0, `rgba(${top.r},${top.g},${top.b},${s * 0.5})`);
-  bodyGrad.addColorStop(0.3, `rgba(${top.r},${top.g},${top.b},${s * 0.9})`);
-  bodyGrad.addColorStop(1, `rgba(${accent.r},${accent.g},${accent.b},${s})`);
-  ctx.globalCompositeOperation = "color";
-  ctx.fillStyle = bodyGrad;
-  ctx.fillRect(0, y0, w, h - y0);
-  ctx.globalCompositeOperation = "multiply";
-  ctx.fillStyle = bodyGrad;
-  ctx.fillRect(0, y0, w, h - y0);
-  ctx.globalCompositeOperation = "source-over";
-}
-
-async function blendReferenceHint(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  refUrl: string,
-  category: LookCategory
-) {
-  try {
-    const ref = await loadImage(refUrl);
-    const region =
-      category === "fashion"
-        ? { y: h * 0.38, hh: h * 0.62 }
-        : category === "makeup"
-          ? { y: h * 0.2, hh: h * 0.55 }
-          : { y: 0, hh: h * 0.55 };
-
-    ctx.save();
-    ctx.globalCompositeOperation = "soft-light";
-    ctx.globalAlpha = category === "fashion" ? 0.35 : 0.28;
-    ctx.drawImage(ref, 0, region.y, w, region.hh, 0, region.y, w, region.hh);
-    ctx.restore();
-  } catch {
-    /* optional */
-  }
 }
 
 function applyColorFilter(
@@ -407,7 +397,6 @@ function applyColorFilter(
   const br = filter.brightness ?? 1;
   const ct = filter.contrast ?? 1;
   const sat = filter.saturate ?? 1;
-  const warm = filter.warmth ?? 0;
 
   for (let i = 0; i < d.length; i += 4) {
     let r = d[i];
@@ -420,9 +409,6 @@ function applyColorFilter(
     r = gray + (r - gray) * sat;
     g = gray + (g - gray) * sat;
     b = gray + (b - gray) * sat;
-    r += warm * 22;
-    g += warm * 10;
-    b -= warm * 8;
     d[i] = Math.min(255, Math.max(0, r));
     d[i + 1] = Math.min(255, Math.max(0, g));
     d[i + 2] = Math.min(255, Math.max(0, b));
@@ -439,33 +425,32 @@ function applyPresetByCategory(
   const cat = preset.category;
 
   if (cat === "hairColor") {
-    if (preset.hairTint) applyHairColorHSL(ctx, w, h, preset.hairTint);
+    if (preset.hairTint) applyHairColorNatural(ctx, w, h, preset.hairTint);
     return;
   }
-
   if (cat === "hairStyle") {
-    if (preset.hairTint) applyHairColorHSL(ctx, w, h, { ...preset.hairTint, strength: preset.hairTint.strength * 0.5 });
+    if (preset.hairTint)
+      applyHairColorNatural(ctx, w, h, {
+        ...preset.hairTint,
+        strength: preset.hairTint.strength * 0.45,
+      });
     if (preset.hairStyleEffect) applyHairStyle(ctx, w, h, preset.hairStyleEffect);
-    if (preset.filter) applyColorFilter(ctx, w, h, preset.filter);
     return;
   }
-
   if (cat === "makeup") {
-    if (preset.makeup) applyMakeupMasked(ctx, w, h, preset.makeup);
+    if (preset.makeup) applyMakeup(ctx, w, h, preset.makeup);
     if (preset.filter) applyColorFilter(ctx, w, h, preset.filter);
     return;
   }
-
   if (cat === "fashion") {
-    if (preset.fashionOverlay) applyFashionMasked(ctx, w, h, preset.fashionOverlay);
-    if (preset.filter) applyColorFilter(ctx, w, h, preset.filter);
+    if (preset.fashionOverlay) applyFashion(ctx, w, h, preset.fashionOverlay);
     return;
   }
 
-  if (preset.hairTint) applyHairColorHSL(ctx, w, h, preset.hairTint);
+  if (preset.hairTint) applyHairColorNatural(ctx, w, h, preset.hairTint);
   if (preset.hairStyleEffect) applyHairStyle(ctx, w, h, preset.hairStyleEffect);
-  if (preset.fashionOverlay) applyFashionMasked(ctx, w, h, preset.fashionOverlay);
-  if (preset.makeup) applyMakeupMasked(ctx, w, h, preset.makeup);
+  if (preset.fashionOverlay) applyFashion(ctx, w, h, preset.fashionOverlay);
+  if (preset.makeup) applyMakeup(ctx, w, h, preset.makeup);
   if (preset.filter) applyColorFilter(ctx, w, h, preset.filter);
 }
 
@@ -482,7 +467,7 @@ export async function renderLookPreview(
   }
 
   const img = await loadImage(photoDataUrl);
-  const maxW = 800;
+  const maxW = 900;
   const scale = Math.min(1, maxW / img.naturalWidth);
   const w = Math.max(1, Math.round(img.naturalWidth * scale));
   const h = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -496,12 +481,8 @@ export async function renderLookPreview(
   ctx.drawImage(img, 0, 0, w, h);
   applyPresetByCategory(ctx, w, h, preset);
 
-  if (preset.fromReference) {
-    await blendReferenceHint(ctx, w, h, preset.fromReference, preset.category);
-  }
-
   try {
-    return canvas.toDataURL("image/jpeg", 0.92);
+    return canvas.toDataURL("image/jpeg", 0.93);
   } catch {
     throw new Error("プレビュー画像の作成に失敗しました");
   }
@@ -514,8 +495,7 @@ export async function renderLookGallery(
   const out: { preset: LookPreset; imageUrl: string }[] = [];
   for (const preset of presets) {
     try {
-      const imageUrl = await renderLookPreview(photoDataUrl, preset);
-      out.push({ preset, imageUrl });
+      out.push({ preset, imageUrl: await renderLookPreview(photoDataUrl, preset) });
     } catch {
       /* skip */
     }
