@@ -5,6 +5,7 @@ import {
   pollSimulateEdit,
   runSimulateEdit,
 } from "@/lib/ai/runSimulate";
+import { isQuotaOrRateLimitError } from "@/lib/simulateErrors";
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const status = isQuotaOrRateLimitError(msg) ? 429 : 500;
+    return NextResponse.json({ error: msg }, { status });
   }
 }

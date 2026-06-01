@@ -1,4 +1,5 @@
 import type { LookPreset } from "./lookPresets";
+import { toUserSimulateError } from "./simulateErrors";
 
 export type SimulateApiResult =
   | {
@@ -43,7 +44,9 @@ export async function requestSimulateEdit(
     if (json.error === "SIMULATE_NOT_CONFIGURED") {
       throw new Error(json.message || "APIキーが未設定です");
     }
-    throw new Error(json.error || json.message || "生成に失敗しました");
+    throw new Error(
+      toUserSimulateError(json.error || json.message || "生成に失敗しました")
+    );
   }
 
   return json;

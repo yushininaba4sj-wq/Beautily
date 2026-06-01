@@ -1,6 +1,7 @@
 import type { LookPreset } from "../lookPresets";
+import { isQuotaOrRateLimitError, toUserSimulateError } from "../simulateErrors";
 import { buildSimulatePrompt } from "../simulatePrompt";
-import { geminiEditImage } from "./geminiImage";
+import { geminiEditImage, GeminiQuotaError } from "./geminiImage";
 import {
   replicateCreatePrediction,
   replicateEditImage,
@@ -27,6 +28,34 @@ function geminiKey(): string | null {
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || null;
 }
 
+async function runReplicate(
+  photoDataUrl: string,
+  prompt: string
+): Promise<SimulateStartResult> {
+  const replicateToken = process.env.REPLICATE_API_TOKEN;
+  if (!replicateToken) throw new Error("SIMULATE_NOT_CONFIGURED");
+
+  try {
+    const imageDataUrl = await replicateEditImage(
+      replicateToken,
+      photoDataUrl,
+      prompt,
+      55000
+    );
+    return { mode: "done", imageDataUrl, provider: "replicate" };
+  } catch (e) {
+    if (e instanceof Error && e.message === "REPLICATE_TIMEOUT") {
+      const predictionId = await replicateCreatePrediction(
+        replicateToken,
+        photoDataUrl,
+        prompt
+      );
+      return { mode: "poll", predictionId, provider: "replicate" };
+    }
+    throw e;
+  }
+}
+
 export async function runSimulateEdit(
   photoDataUrl: string,
   preset: LookPreset,
@@ -37,37 +66,35 @@ export async function runSimulateEdit(
   });
 
   const gemini = geminiKey();
-  if (gemini) {
-    const imageDataUrl = await geminiEditImage(
-      gemini,
-      photoDataUrl,
-      prompt,
-      referenceDataUrl
-    );
-    return { mode: "done", imageDataUrl, provider: "gemini" };
-  }
+  const hasReplicate = Boolean(process.env.REPLICATE_API_TOKEN);
 
-  const replicateToken = process.env.REPLICATE_API_TOKEN;
-  if (replicateToken) {
+  if (gemini) {
     try {
-      const imageDataUrl = await replicateEditImage(
-        replicateToken,
+      const imageDataUrl = await geminiEditImage(
+        gemini,
         photoDataUrl,
         prompt,
-        55000
+        referenceDataUrl
       );
-      return { mode: "done", imageDataUrl, provider: "replicate" };
+      return { mode: "done", imageDataUrl, provider: "gemini" };
     } catch (e) {
-      if (e instanceof Error && e.message === "REPLICATE_TIMEOUT") {
-        const predictionId = await replicateCreatePrediction(
-          replicateToken,
-          photoDataUrl,
-          prompt
-        );
-        return { mode: "poll", predictionId, provider: "replicate" };
+      const msg = e instanceof Error ? e.message : String(e);
+      const quotaHit =
+        e instanceof GeminiQuotaError || isQuotaOrRateLimitError(msg);
+
+      if (quotaHit && hasReplicate) {
+        return runReplicate(photoDataUrl, prompt);
       }
-      throw e;
+
+      if (quotaHit) {
+        throw new Error(toUserSimulateError(msg));
+      }
+      throw new Error(toUserSimulateError(msg));
     }
+  }
+
+  if (hasReplicate) {
+    return runReplicate(photoDataUrl, prompt);
   }
 
   throw new Error("SIMULATE_NOT_CONFIGURED");

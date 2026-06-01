@@ -1,8 +1,17 @@
-const GEMINI_MODELS = [
-  "gemini-2.5-flash-image",
+import { isQuotaOrRateLimitError } from "../simulateErrors";
+
+/** 2.5 preview は無料枠が枯渇しやすいため後回し */
+const DEFAULT_GEMINI_MODELS = [
   "gemini-2.0-flash-preview-image-generation",
   "gemini-3.1-flash-image",
+  "gemini-2.5-flash-image",
 ] as const;
+
+function getGeminiModels(): string[] {
+  const override = process.env.GEMINI_IMAGE_MODEL?.trim();
+  if (override) return [override];
+  return [...DEFAULT_GEMINI_MODELS];
+}
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -32,6 +41,21 @@ function extractImageFromResponse(json: unknown): string | null {
   return null;
 }
 
+function shouldTryNextModel(status: number, message: string): boolean {
+  if (status === 404 || status === 400) return true;
+  if (status === 429) return true;
+  if (status === 403 && isQuotaOrRateLimitError(message)) return true;
+  if (isQuotaOrRateLimitError(message)) return true;
+  return false;
+}
+
+export class GeminiQuotaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GeminiQuotaError";
+  }
+}
+
 export async function geminiEditImage(
   apiKey: string,
   photoDataUrl: string,
@@ -59,9 +83,11 @@ export async function geminiEditImage(
     },
   };
 
+  const models = getGeminiModels();
   let lastError = "Gemini image generation failed";
+  let sawQuota = false;
 
-  for (const model of GEMINI_MODELS) {
+  for (const model of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const res = await fetch(url, {
       method: "POST",
@@ -69,11 +95,12 @@ export async function geminiEditImage(
       body: JSON.stringify(body),
     });
 
-    const json = (await res.json()) as { error?: { message?: string } };
+    const json = (await res.json()) as { error?: { message?: string; status?: string } };
 
     if (!res.ok) {
       lastError = json.error?.message || `Gemini ${model}: HTTP ${res.status}`;
-      if (res.status === 404 || res.status === 400) continue;
+      if (isQuotaOrRateLimitError(lastError)) sawQuota = true;
+      if (shouldTryNextModel(res.status, lastError)) continue;
       throw new Error(lastError);
     }
 
@@ -83,5 +110,8 @@ export async function geminiEditImage(
     lastError = `Gemini ${model} returned no image`;
   }
 
+  if (sawQuota) {
+    throw new GeminiQuotaError(lastError);
+  }
   throw new Error(lastError);
 }

@@ -437,7 +437,7 @@ export default function SimulatePage() {
 
       <Card className="bg-[var(--cream)]/60">
         <p className="text-xs leading-relaxed text-[var(--muted)]">
-          ※ Gemini / FLUX Kontext による画像編集。同一人物・ポーズを保ちつつ髪・メイク・服を変更します。猫耳など小物がある写真は結果が不安定になることがあります。
+          ※ Gemini / FLUX Kontext による画像編集。無料枠の上限時は数分〜翌日待つか、Google で課金を有効にしてください。Replicate トークンを Vercel に入れると自動で切り替わります。
         </p>
       </Card>
     </div>
