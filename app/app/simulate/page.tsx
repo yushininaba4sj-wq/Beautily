@@ -162,7 +162,7 @@ export default function SimulatePage() {
   if (!profile) {
     return (
       <div className="space-y-4">
-        <SectionTitle sub="Simulation" title="シミュレーション" />
+        <SectionTitle sub="Try On" title="新しい私を試す" />
         <Card>
           <p className="text-sm text-[var(--muted)]">
             診断後に、あなたの写真で髪色・メイク・ファッションの変更イメージを確認できます。
@@ -193,9 +193,9 @@ export default function SimulatePage() {
 
   return (
     <div className="space-y-5">
-      <SectionTitle sub="Simulation" title="シミュレーション" />
+      <SectionTitle sub="Try On" title="新しい私を試す" />
       <p className="-mt-2 text-sm text-[var(--muted)]">
-        使う写真を選び、スタイルをタップするとプレビューが表示されます。
+        髪色・髪型・メイク（チーク高め）・服の色味まで、はっきり変わるプレビュー。写真を選んでスタイルをタップ。
       </p>
 
       {photos.length > 0 && (
@@ -326,7 +326,7 @@ export default function SimulatePage() {
 
       <Card className="bg-[var(--cream)]/60">
         <p className="text-xs leading-relaxed text-[var(--muted)]">
-          ※ お写真に髪色・メイク・色味を重ねたプレビューです。実際のカットや施術は美容師・メイクで調整してください。
+          ※ 髪の色味・前髪の印象・服のトーン・メイクを写真に重ねたイメージです。サロンで「この雰囲気で」と見せる参考にしてください。
         </p>
       </Card>
     </div>

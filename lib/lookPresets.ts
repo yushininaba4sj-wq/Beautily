@@ -1,11 +1,25 @@
 export type LookCategory = "hairColor" | "hairStyle" | "makeup" | "fashion" | "finish";
 
+export type HairStyleEffect = "bangs" | "no-bangs" | "bob" | "long" | "layer";
+
 export type LookPreset = {
   id: string;
   category: LookCategory;
   name: string;
   hairTint?: { hex: string; strength: number };
-  makeup?: { lipHex: string; cheekHex: string; strength: number };
+  hairStyleEffect?: HairStyleEffect;
+  makeup?: {
+    lipHex: string;
+    cheekHex: string;
+    eyeHex?: string;
+    strength: number;
+    cheekHeight?: number;
+  };
+  fashionOverlay?: {
+    topHex: string;
+    accentHex?: string;
+    strength: number;
+  };
   filter?: {
     brightness?: number;
     contrast?: number;
@@ -15,12 +29,13 @@ export type LookPreset = {
 };
 
 export const HAIR_COLOR_PRESETS: LookPreset[] = [
-  { id: "hc-milk", category: "hairColor", name: "ミルクティー", hairTint: { hex: "#d4c4b0", strength: 0.42 } },
-  { id: "hc-greige", category: "hairColor", name: "グレージュ", hairTint: { hex: "#9a8f88", strength: 0.45 } },
-  { id: "hc-pink", category: "hairColor", name: "ピンクブラウン", hairTint: { hex: "#c49a8f", strength: 0.4 } },
-  { id: "hc-lavender", category: "hairColor", name: "ラベンダー", hairTint: { hex: "#b8a8c8", strength: 0.38 } },
-  { id: "hc-black", category: "hairColor", name: "黒髪", hairTint: { hex: "#2a2420", strength: 0.5 } },
-  { id: "hc-ash", category: "hairColor", name: "アッシュ", hairTint: { hex: "#8a9098", strength: 0.4 } },
+  { id: "hc-milk", category: "hairColor", name: "ミルクティー", hairTint: { hex: "#e8dcc8", strength: 0.88 } },
+  { id: "hc-greige", category: "hairColor", name: "グレージュ", hairTint: { hex: "#8a8278", strength: 0.9 } },
+  { id: "hc-pink", category: "hairColor", name: "ピンクブラウン", hairTint: { hex: "#c87868", strength: 0.85 } },
+  { id: "hc-lavender", category: "hairColor", name: "ラベンダー", hairTint: { hex: "#a898c8", strength: 0.82 } },
+  { id: "hc-black", category: "hairColor", name: "黒髪", hairTint: { hex: "#1a1614", strength: 0.92 } },
+  { id: "hc-ash", category: "hairColor", name: "アッシュ", hairTint: { hex: "#788088", strength: 0.86 } },
+  { id: "hc-honey", category: "hairColor", name: "ハニーブロンド", hairTint: { hex: "#d4a860", strength: 0.84 } },
 ];
 
 export const HAIR_STYLE_PRESETS: LookPreset[] = [
@@ -28,36 +43,39 @@ export const HAIR_STYLE_PRESETS: LookPreset[] = [
     id: "hs-bob",
     category: "hairStyle",
     name: "ボブ",
-    hairTint: { hex: "#b8a99a", strength: 0.25 },
-    filter: { brightness: 1.03, contrast: 1.05, saturate: 1.02 },
+    hairStyleEffect: "bob",
+    hairTint: { hex: "#b0a090", strength: 0.5 },
+    filter: { contrast: 1.08, saturate: 1.05 },
   },
   {
     id: "hs-long",
     category: "hairStyle",
     name: "ロング",
-    hairTint: { hex: "#a89a8e", strength: 0.22 },
-    filter: { brightness: 1.02, contrast: 0.98, saturate: 1.05 },
+    hairStyleEffect: "long",
+    hairTint: { hex: "#9a8a7a", strength: 0.45 },
+    filter: { brightness: 1.02, saturate: 1.08 },
   },
   {
     id: "hs-layer",
     category: "hairStyle",
     name: "レイヤー",
-    hairTint: { hex: "#c4b5a8", strength: 0.28 },
-    filter: { contrast: 1.08, saturate: 1.04 },
+    hairStyleEffect: "layer",
+    hairTint: { hex: "#c8b8a8", strength: 0.55 },
+    filter: { contrast: 1.1 },
   },
   {
     id: "hs-bangs",
     category: "hairStyle",
     name: "前髪あり",
-    hairTint: { hex: "#3d3530", strength: 0.35 },
-    filter: { brightness: 1.04 },
+    hairStyleEffect: "bangs",
+    hairTint: { hex: "#2a2420", strength: 0.65 },
   },
   {
     id: "hs-nobangs",
     category: "hairStyle",
     name: "前髪なし",
-    hairTint: { hex: "#8a7d72", strength: 0.2 },
-    filter: { brightness: 1.05, contrast: 1.02 },
+    hairStyleEffect: "no-bangs",
+    filter: { brightness: 1.06, contrast: 1.04 },
   },
 ];
 
@@ -66,36 +84,66 @@ export const MAKEUP_PRESETS: LookPreset[] = [
     id: "mk-korea",
     category: "makeup",
     name: "韓流きれいめ",
-    makeup: { lipHex: "#e8a4a0", cheekHex: "#f0b8b0", strength: 0.35 },
-    filter: { brightness: 1.06, saturate: 1.08 },
+    makeup: {
+      lipHex: "#e87878",
+      cheekHex: "#f8a0a0",
+      eyeHex: "#d8a0a8",
+      strength: 0.72,
+      cheekHeight: 0.44,
+    },
+    filter: { brightness: 1.08, saturate: 1.12 },
   },
   {
     id: "mk-clear",
     category: "makeup",
     name: "清楚系",
-    makeup: { lipHex: "#d4a0a8", cheekHex: "#f5c4c0", strength: 0.28 },
-    filter: { brightness: 1.08, contrast: 0.95 },
+    makeup: {
+      lipHex: "#d88898",
+      cheekHex: "#ffc8c8",
+      eyeHex: "#e8c0c8",
+      strength: 0.65,
+      cheekHeight: 0.43,
+    },
+    filter: { brightness: 1.1, contrast: 0.96 },
   },
   {
     id: "mk-actress",
     category: "makeup",
     name: "女優系",
-    makeup: { lipHex: "#b87070", cheekHex: "#d49890", strength: 0.32 },
-    filter: { contrast: 1.05, warmth: 0.08 },
+    makeup: {
+      lipHex: "#a84858",
+      cheekHex: "#d08080",
+      eyeHex: "#b88888",
+      strength: 0.68,
+      cheekHeight: 0.45,
+    },
+    filter: { contrast: 1.08, warmth: 0.1 },
   },
   {
     id: "mk-mature",
     category: "makeup",
     name: "大人っぽい",
-    makeup: { lipHex: "#9a5058", cheekHex: "#c08078", strength: 0.3 },
-    filter: { contrast: 1.1, saturate: 0.95 },
+    makeup: {
+      lipHex: "#8a3848",
+      cheekHex: "#c07070",
+      eyeHex: "#987070",
+      strength: 0.62,
+      cheekHeight: 0.46,
+    },
+    filter: { contrast: 1.12, saturate: 0.98 },
   },
   {
     id: "mk-girly",
     category: "makeup",
     name: "ガーリー",
-    makeup: { lipHex: "#f08090", cheekHex: "#ffb0b8", strength: 0.4 },
-    filter: { brightness: 1.05, saturate: 1.12 },
+    makeup: {
+      lipHex: "#f06888",
+      cheekHex: "#ffa8b8",
+      eyeHex: "#f8a0b0",
+      strength: 0.78,
+      cheekHeight: 0.42,
+    },
+    filter: { brightness: 1.06, saturate: 1.15 },
   },
 ];
 
@@ -104,41 +152,47 @@ export const FASHION_PRESETS: LookPreset[] = [
     id: "fa-korea",
     category: "fashion",
     name: "韓国きれいめ",
-    makeup: { lipHex: "#e09088", cheekHex: "#f0a8a0", strength: 0.25 },
-    filter: { brightness: 1.05, saturate: 1.1, warmth: 0.05 },
+    fashionOverlay: { topHex: "#f0e8e8", accentHex: "#c8a0a0", strength: 0.72 },
+    makeup: { lipHex: "#e08080", cheekHex: "#f0a8a8", strength: 0.55, cheekHeight: 0.44 },
+    filter: { brightness: 1.04, saturate: 1.1 },
   },
   {
     id: "fa-feminine",
     category: "fashion",
     name: "フェミニン",
-    makeup: { lipHex: "#d88898", cheekHex: "#f5b0b8", strength: 0.3 },
-    filter: { brightness: 1.04, saturate: 1.06 },
+    fashionOverlay: { topHex: "#f8d8e0", accentHex: "#e8a0b0", strength: 0.75 },
+    makeup: { lipHex: "#e07090", cheekHex: "#f8b0c0", strength: 0.6, cheekHeight: 0.43 },
   },
   {
     id: "fa-pale",
     category: "fashion",
     name: "淡色女子",
-    makeup: { lipHex: "#e8b8c8", cheekHex: "#f8d0d8", strength: 0.22 },
-    filter: { brightness: 1.1, contrast: 0.92, saturate: 0.9 },
+    fashionOverlay: { topHex: "#f8f0f8", accentHex: "#e8d0e8", strength: 0.7 },
+    makeup: { lipHex: "#e8b0c8", cheekHex: "#ffe0e8", strength: 0.5, cheekHeight: 0.42 },
+    filter: { brightness: 1.08, saturate: 0.95 },
   },
   {
     id: "fa-mode",
     category: "fashion",
     name: "モード",
-    filter: { contrast: 1.15, saturate: 0.85, brightness: 0.98 },
+    fashionOverlay: { topHex: "#2a2830", accentHex: "#1a1818", strength: 0.78 },
+    makeup: { lipHex: "#8a4858", cheekHex: "#a07078", strength: 0.45, cheekHeight: 0.46 },
+    filter: { contrast: 1.15, saturate: 0.9, brightness: 0.96 },
   },
   {
     id: "fa-casual",
     category: "fashion",
     name: "カジュアル",
-    filter: { brightness: 1.05, saturate: 1.02, warmth: 0.06 },
+    fashionOverlay: { topHex: "#d8e8f0", accentHex: "#a8c8d8", strength: 0.68 },
+    filter: { brightness: 1.05, saturate: 1.05, warmth: 0.06 },
   },
   {
     id: "fa-neat",
     category: "fashion",
     name: "きれいめ",
-    makeup: { lipHex: "#c87878", cheekHex: "#e0a0a0", strength: 0.26 },
-    filter: { contrast: 1.06, brightness: 1.03 },
+    fashionOverlay: { topHex: "#f0ece8", accentHex: "#d8c8c0", strength: 0.7 },
+    makeup: { lipHex: "#c87078", cheekHex: "#e8a0a0", strength: 0.52, cheekHeight: 0.44 },
+    filter: { contrast: 1.06, brightness: 1.04 },
   },
 ];
 
@@ -170,7 +224,9 @@ export function buildFinishPreset(
     category: "finish",
     name: "あなたの完成形",
     hairTint: hc.hairTint,
+    hairStyleEffect: "layer",
     makeup: mk.makeup || fa.makeup,
+    fashionOverlay: fa.fashionOverlay,
     filter: {
       brightness: (mk.filter?.brightness || 1) * (fa.filter?.brightness || 1),
       contrast: ((mk.filter?.contrast || 1) + (fa.filter?.contrast || 1)) / 2,

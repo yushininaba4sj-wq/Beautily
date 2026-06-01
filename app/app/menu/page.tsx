@@ -5,6 +5,7 @@ import { SectionTitle } from "@/components/Card";
 import { useProfile } from "@/components/ProfileProvider";
 
 const items = [
+  { href: "/app/discover", label: "新しい私を探す", icon: "✦", requiresProfile: true },
   { href: "/app/timeline", label: "美容タイムライン", icon: "▤", requiresProfile: false },
   { href: "/app/scan", label: "顔写真診断", icon: "◎", requiresProfile: false },
   { href: "/app/proposals", label: "美容提案", icon: "✦", requiresProfile: true },
@@ -25,7 +26,7 @@ export default function MenuPage() {
     <div className="space-y-5">
       <SectionTitle sub="All Features" title="機能メニュー" />
       <p className="-mt-2 text-sm text-[var(--muted)]">
-        基礎の学習 → 診断 → 追加検索・着せ替えプレビューの順で使えます。
+        診断 → 新しい私を探す → シミュレーション → 完成形まで伴走。
       </p>
       <div className="grid gap-2">
         {items.map((item) => {

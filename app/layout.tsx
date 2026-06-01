@@ -17,7 +17,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Beautily — 美容プロデューサー",
   description:
-    "顔写真1枚から診断・提案・シミュレーション・買い物相談まで。あなた専属の美容コンサルタントが、一番似合う完成形まで導きます。",
+    "まだ出会っていない「新しい私」を探す。診断・3つの可能性・本気シミュレーション・完成形まで、女子大生の変身を一気通貫で。",
   other: { "build-tag": "2026-06-02-no-ai" },
 };
 

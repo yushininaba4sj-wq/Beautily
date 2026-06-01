@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Card, SectionTitle, Tag } from "@/components/Card";
+import { FaceInsightPanels } from "@/components/FaceInsightPanels";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { useProfile } from "@/components/ProfileProvider";
 import { MAX_PHOTOS } from "@/lib/photos";
@@ -121,6 +122,8 @@ export default function ChartPage() {
           ))}
         </div>
       </Card>
+
+      <FaceInsightPanels profile={profile} />
 
       <Link
         href="/app/roadmap"

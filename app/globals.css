@@ -72,3 +72,41 @@ body {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+.gradient-premium {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(232, 180, 184, 0.55), transparent),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(201, 168, 124, 0.35), transparent),
+    linear-gradient(165deg, #fffdfb 0%, #faf0eb 40%, #f3e4de 100%);
+}
+
+.shine-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.shine-card:active {
+  transform: scale(0.98);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--rose-dark) 0%,
+    var(--gold) 50%,
+    var(--rose-dark) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 4s linear infinite;
+}

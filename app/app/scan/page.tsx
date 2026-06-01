@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, ScoreBar, SectionTitle, Tag } from "@/components/Card";
+import { FaceInsightPanels } from "@/components/FaceInsightPanels";
 import { PhotoGallery } from "@/components/PhotoGallery";
 import { useProfile } from "@/components/ProfileProvider";
 import { analyzePhoto } from "@/lib/diagnosis";
@@ -363,19 +364,29 @@ export default function ScanPage() {
             </div>
           </Card>
 
-          <div className="flex gap-3">
+          <FaceInsightPanels profile={result} />
+
+          <div className="flex flex-col gap-2">
             <Link
-              href="/app/simulate"
-              className="flex-1 rounded-xl bg-[var(--rose-dark)] py-3 text-center text-sm font-bold text-white"
+              href="/app/discover"
+              className="rounded-xl bg-[var(--rose-dark)] py-3 text-center text-sm font-bold text-white"
             >
-              シミュレーション
+              3つの「新しい私」を見る →
             </Link>
-            <Link
-              href="/app/timeline"
-              className="flex-1 rounded-xl border border-[var(--rose-light)] py-3 text-center text-sm font-bold"
-            >
-              タイムライン
-            </Link>
+            <div className="flex gap-3">
+              <Link
+                href="/app/simulate"
+                className="flex-1 rounded-xl bg-[var(--ink)] py-3 text-center text-sm font-bold text-white"
+              >
+                シミュレーション
+              </Link>
+              <Link
+                href="/app/chart"
+                className="flex-1 rounded-xl border border-[var(--rose-light)] py-3 text-center text-sm font-bold"
+              >
+                カルテ
+              </Link>
+            </div>
           </div>
         </>
       )}
