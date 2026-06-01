@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, SectionTitle, Tag } from "@/components/Card";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { Card, SectionTitle } from "@/components/Card";
 import { useProfile } from "@/components/ProfileProvider";
 import {
   buildFinishPreset,
-  FASHION_PRESETS,
   HAIR_COLOR_PRESETS,
   HAIR_STYLE_PRESETS,
   MAKEUP_PRESETS,
@@ -15,10 +15,9 @@ import {
 } from "@/lib/lookPresets";
 import { renderLookPreview } from "@/lib/lookRenderer";
 
-type SimTab = "gallery" | LookCategory;
+type SimTab = LookCategory;
 
 const tabs: { id: SimTab; label: string }[] = [
-  { id: "gallery", label: "おすすめ一覧" },
   { id: "hairColor", label: "髪色" },
   { id: "hairStyle", label: "髪型" },
   { id: "makeup", label: "メイク" },
@@ -26,44 +25,21 @@ const tabs: { id: SimTab; label: string }[] = [
   { id: "finish", label: "完成形" },
 ];
 
-type GalleryItem = { preset: LookPreset; imageUrl: string };
-
 export default function SimulatePage() {
   const { profile } = useProfile();
-  const [tab, setTab] = useState<SimTab>("gallery");
-  const [items, setItems] = useState<GalleryItem[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<SimTab>("hairColor");
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cache, setCache] = useState<Record<string, string>>({});
+  const cacheRef = useRef(cache);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    cacheRef.current = cache;
+  }, [cache]);
 
   const presets = useMemo(() => {
-    if (tab === "gallery" && profile) {
-      const names = new Set<string>();
-      const list: LookPreset[] = [];
-      const add = (p: LookPreset) => {
-        if (!names.has(p.id)) {
-          names.add(p.id);
-          list.push(p);
-        }
-      };
-      profile.hairColor.slice(0, 3).forEach((n) => {
-        const p = HAIR_COLOR_PRESETS.find((x) => x.name === n);
-        if (p) add(p);
-      });
-      HAIR_COLOR_PRESETS.slice(0, 4).forEach(add);
-      profile.hairStyle.slice(0, 2).forEach((n) => {
-        const p = HAIR_STYLE_PRESETS.find((x) => x.name === n);
-        if (p) add(p);
-      });
-      HAIR_STYLE_PRESETS.slice(0, 3).forEach(add);
-      MAKEUP_PRESETS.slice(0, 4).forEach(add);
-      profile.fashion.slice(0, 2).forEach((n) => {
-        const p = FASHION_PRESETS.find((x) => x.name === n || n.includes(x.name));
-        if (p) add(p);
-      });
-      FASHION_PRESETS.slice(0, 4).forEach(add);
-      return list;
-    }
     if (tab === "finish" && profile) {
       return [
         buildFinishPreset(
@@ -73,46 +49,106 @@ export default function SimulatePage() {
         ),
       ];
     }
-    if (tab === "gallery") return [...HAIR_COLOR_PRESETS.slice(0, 3), ...MAKEUP_PRESETS.slice(0, 2)];
-    return presetsForCategory(tab);
+    const base = presetsForCategory(tab);
+    if (!profile) return base;
+    if (tab === "hairColor") {
+      const mine = profile.hairColor
+        .map((n) => HAIR_COLOR_PRESETS.find((p) => p.name === n))
+        .filter(Boolean) as LookPreset[];
+      const rest = base.filter((p) => !mine.some((m) => m.id === p.id));
+      return [...mine, ...rest];
+    }
+    if (tab === "hairStyle") {
+      const mine = profile.hairStyle
+        .map((n) => HAIR_STYLE_PRESETS.find((p) => p.name === n))
+        .filter(Boolean) as LookPreset[];
+      const rest = base.filter((p) => !mine.some((m) => m.id === p.id));
+      return [...mine, ...rest];
+    }
+    return base;
   }, [tab, profile]);
 
-  const generate = useCallback(async () => {
-    if (!profile?.photoUrl) return;
-    setLoading(true);
-    setProgress(0);
-    setItems([]);
-    setSelectedId(null);
+  const picked = presets.find((p) => p.id === pickedId) || null;
 
-    const results: GalleryItem[] = [];
-    const total = presets.length;
-    for (let i = 0; i < presets.length; i++) {
-      const preset = presets[i];
+  const generateOne = useCallback(
+    async (preset: LookPreset) => {
+      if (!profile?.photoUrl) return;
+
+      const cached = cacheRef.current[preset.id];
+      if (cached) {
+        setPreviewUrl(cached);
+        setError(null);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      setPreviewUrl(null);
+
       try {
         const imageUrl = await renderLookPreview(profile.photoUrl, preset);
-        results.push({ preset, imageUrl });
-        setItems([...results]);
-        setProgress(Math.round(((i + 1) / total) * 100));
-      } catch {
-        /* skip */
+        setCache((c) => ({ ...c, [preset.id]: imageUrl }));
+        cacheRef.current = { ...cacheRef.current, [preset.id]: imageUrl };
+        setPreviewUrl(imageUrl);
+      } catch (e) {
+        const msg =
+          e instanceof Error ? e.message : "画像を生成できませんでした";
+        setError(msg);
+      } finally {
+        setLoading(false);
       }
+    },
+    [profile?.photoUrl]
+  );
+
+  const onPick = (preset: LookPreset) => {
+    setPickedId(preset.id);
+    setError(null);
+    const cached = cacheRef.current[preset.id];
+    if (cached) {
+      setPreviewUrl(cached);
+      return;
     }
-    if (results.length) setSelectedId(results[0].preset.id);
-    setLoading(false);
-  }, [profile?.photoUrl, presets]);
+    setPreviewUrl(null);
+    void generateOne(preset);
+  };
 
+  const onTabChange = (id: SimTab) => {
+    setTab(id);
+    setPickedId(null);
+    setPreviewUrl(null);
+    setError(null);
+  };
+
+  // タブ切替時は先頭スタイルを自動選択してプレビュー生成
   useEffect(() => {
-    if (profile?.photoUrl) void generate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tab/presets change only
-  }, [tab, profile?.photoUrl, presets]);
-
-  const selected = items.find((x) => x.preset.id === selectedId) || items[0];
+    if (!profile?.photoUrl || presets.length === 0) return;
+    const first = presets[0];
+    setPickedId(first.id);
+    const cached = cacheRef.current[first.id];
+    if (cached) {
+      setPreviewUrl(cached);
+      return;
+    }
+    void generateOne(first);
+  }, [tab, profile?.photoUrl, presets, generateOne]);
 
   if (!profile) {
     return (
-      <Card>
-        <p className="text-sm text-[var(--muted)]">診断後にシミュレーションが利用できます。</p>
-      </Card>
+      <div className="space-y-4">
+        <SectionTitle sub="Simulation" title="シミュレーション" />
+        <Card>
+          <p className="text-sm text-[var(--muted)]">
+            診断後に、あなたの写真で髪色・メイク・ファッションの変更イメージを確認できます。
+          </p>
+          <Link
+            href="/app/scan"
+            className="mt-3 inline-block rounded-full bg-[var(--ink)] px-4 py-2 text-xs font-bold text-white"
+          >
+            まず診断する
+          </Link>
+        </Card>
+      </div>
     );
   }
 
@@ -122,15 +158,18 @@ export default function SimulatePage() {
         <p className="text-sm text-[var(--muted)]">
           顔写真がある診断結果が必要です。もう一度診断してください。
         </p>
+        <Link href="/app/scan" className="mt-3 inline-block text-sm font-bold text-[var(--rose-dark)]">
+          診断へ →
+        </Link>
       </Card>
     );
   }
 
   return (
     <div className="space-y-5">
-      <SectionTitle sub="Lookbook" title="ビジュアルシミュレーション" />
+      <SectionTitle sub="Simulation" title="シミュレーション" />
       <p className="-mt-2 text-sm text-[var(--muted)]">
-        あなたの写真をもとに、髪色・髪型・メイク・ファッション系統ごとのイメージ画像を自動で作ります。
+        スタイルをタップすると、あなたの写真に髪色・メイク・色味を反映したプレビューが表示されます。
       </p>
 
       <div className="flex gap-1 overflow-x-auto pb-1">
@@ -138,7 +177,7 @@ export default function SimulatePage() {
           <button
             key={t.id}
             type="button"
-            onClick={() => setTab(t.id)}
+            onClick={() => onTabChange(t.id)}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${
               tab === t.id
                 ? "bg-[var(--ink)] text-white"
@@ -150,28 +189,15 @@ export default function SimulatePage() {
         ))}
       </div>
 
-      {loading && (
-        <Card className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[var(--rose-light)] border-t-[var(--rose-dark)]" />
-          <p className="mt-3 text-sm font-semibold">イメージを生成中…</p>
-          <div className="mx-auto mt-3 h-2 max-w-xs overflow-hidden rounded-full bg-[var(--cream)]">
-            <div
-              className="h-full rounded-full bg-[var(--rose-dark)] transition-all"
-              style={{ width: `${progress}%` }}
-            />
+      <Card className="p-3">
+        <p className="mb-2 text-center text-xs font-bold text-[var(--muted)]">プレビュー</p>
+        {loading && (
+          <div className="py-8 text-center">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[var(--rose-light)] border-t-[var(--rose-dark)]" />
+            <p className="mt-3 text-sm font-semibold">生成中…</p>
           </div>
-          <p className="mt-2 text-xs text-[var(--muted)]">{items.length} / {presets.length} 枚</p>
-        </Card>
-      )}
-
-      {selected && !loading && (
-        <Card className="p-3">
-          <p className="mb-2 text-center text-xs font-bold text-[var(--rose-dark)]">
-            {selected.preset.name}
-            <span className="ml-2 font-normal text-[var(--muted)]">
-              {categoryLabel(selected.preset.category)}
-            </span>
-          </p>
+        )}
+        {!loading && (
           <div className="grid grid-cols-2 gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -179,72 +205,81 @@ export default function SimulatePage() {
               alt="元の写真"
               className="aspect-[3/4] w-full rounded-xl object-cover"
             />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={selected.imageUrl}
-              alt={selected.preset.name}
-              className="aspect-[3/4] w-full rounded-xl object-cover ring-2 ring-[var(--rose-dark)]/40"
-            />
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt={picked?.name || "変更イメージ"}
+                className="aspect-[3/4] w-full rounded-xl object-cover ring-2 ring-[var(--rose-dark)]/40"
+              />
+            ) : (
+              <div className="flex aspect-[3/4] items-center justify-center rounded-xl bg-[var(--cream)] text-center text-xs text-[var(--muted)]">
+                {error ? "生成できませんでした" : "スタイルを選ぶと表示されます"}
+              </div>
+            )}
           </div>
-          <p className="mt-2 text-center text-[10px] text-[var(--muted)]">
-            左：現在 · 右：変更イメージ（髪色・メイク・トーンを反映）
+        )}
+        {picked && !loading && (
+          <p className="mt-2 text-center text-xs font-bold text-[var(--rose-dark)]">
+            {picked.name}
+            <span className="ml-1 font-normal text-[var(--muted)]">
+              ({categoryLabel(picked.category)})
+            </span>
           </p>
+        )}
+      </Card>
+
+      {error && (
+        <Card className="border border-red-200 bg-red-50/50">
+          <p className="text-sm text-red-800">{error}</p>
+          {picked && (
+            <button
+              type="button"
+              onClick={() => void generateOne(picked)}
+              className="mt-2 text-xs font-bold text-[var(--rose-dark)]"
+            >
+              再試行 →
+            </button>
+          )}
         </Card>
       )}
 
-      {!loading && items.length > 0 && (
-        <>
-          <p className="text-xs font-bold text-[var(--ink)]">
-            バリエーション（{items.length}枚）— タップで拡大
-          </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {items.map((item) => (
-              <button
-                key={item.preset.id}
-                type="button"
-                onClick={() => setSelectedId(item.preset.id)}
-                className={`overflow-hidden rounded-xl text-left ring-2 transition ${
-                  selectedId === item.preset.id || (!selectedId && item === items[0])
-                    ? "ring-[var(--rose-dark)]"
-                    : "ring-transparent"
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.imageUrl}
-                  alt={item.preset.name}
-                  className="aspect-[3/4] w-full object-cover"
-                />
-                <div className="bg-white px-2 py-1.5">
-                  <p className="text-[11px] font-bold leading-tight">{item.preset.name}</p>
-                  <p className="text-[9px] text-[var(--muted)]">
-                    {categoryLabel(item.preset.category)}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <Card>
+        <p className="text-xs font-bold text-[var(--ink)]">スタイルを選ぶ</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {presets.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              disabled={loading}
+              onClick={() => onPick(p)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
+                pickedId === p.id
+                  ? "bg-[var(--rose-dark)] text-white"
+                  : "bg-[var(--cream)] text-[var(--ink)]"
+              }`}
+            >
+              {p.name}
+              {cache[p.id] && <span className="ml-1 opacity-70">✓</span>}
+            </button>
+          ))}
+        </div>
+      </Card>
 
-      {!loading && items.length === 0 && (
-        <Card>
-          <p className="text-sm text-[var(--muted)]">画像を生成できませんでした。</p>
-        </Card>
+      {picked && (
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => void generateOne(picked)}
+          className="w-full rounded-xl border border-[var(--rose-light)] py-3 text-sm font-bold text-[var(--ink)] disabled:opacity-50"
+        >
+          {loading ? "生成中…" : "このスタイルを再生成"}
+        </button>
       )}
-
-      <button
-        type="button"
-        disabled={loading}
-        onClick={() => void generate()}
-        className="w-full rounded-xl bg-[var(--ink)] py-3 text-sm font-bold text-white disabled:opacity-50"
-      >
-        {loading ? "生成中…" : "画像を再生成"}
-      </button>
 
       <Card className="bg-[var(--cream)]/60">
         <p className="text-xs leading-relaxed text-[var(--muted)]">
-          ※ お写真に髪色・メイク・色味のフィルターを重ねたプレビューです。実際のカットや施術は美容師・メイクで調整してください。より精密な仕上がりはサロンでご相談ください。
+          ※ お写真に髪色・メイク・色味を重ねたプレビューです。実際のカットや施術は美容師・メイクで調整してください。
         </p>
       </Card>
     </div>

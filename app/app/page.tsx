@@ -6,11 +6,12 @@ import { useProfile } from "@/components/ProfileProvider";
 import { shareText } from "@/lib/diagnosis";
 
 const quickLinks = [
-  { href: "/app/simulate", label: "シミュレーション", desc: "髪型・髪色・メイク・完成形" },
-  { href: "/app/timeline", label: "タイムライン", desc: "要素ごとに調べる" },
-  { href: "/app/advisor", label: "美容秘書", desc: "24時間なんでも相談" },
-  { href: "/app/shop", label: "買い物同行", desc: "商品が似合うか判定" },
-  { href: "/app/roadmap", label: "垢抜けロードマップ", desc: "改善の優先順位" },
+  { href: "/app/timeline", label: "美容タイムライン", desc: "基礎4要素 → 診断後に深掘り", requiresProfile: false },
+  { href: "/app/simulate", label: "シミュレーション", desc: "髪色・メイク・服を自分で確認", requiresProfile: true },
+  { href: "/app/proposals", label: "美容提案", desc: "似合うメイク・髪・服", requiresProfile: true },
+  { href: "/app/advisor", label: "美容秘書", desc: "24時間なんでも相談", requiresProfile: false },
+  { href: "/app/shop", label: "買い物同行", desc: "商品が似合うか判定", requiresProfile: false },
+  { href: "/app/roadmap", label: "垢抜けロードマップ", desc: "改善の優先順位", requiresProfile: true },
 ];
 
 export default function AppHomePage() {
@@ -75,16 +76,31 @@ export default function AppHomePage() {
       <div>
         <SectionTitle sub="Features" title="あなた専属の機能" />
         <div className="grid grid-cols-2 gap-3">
-          {quickLinks.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="card-hover rounded-2xl bg-white p-4 ring-1 ring-[var(--rose-light)]/25"
-            >
-              <p className="text-sm font-bold text-[var(--ink)]">{l.label}</p>
-              <p className="mt-1 text-[11px] text-[var(--muted)]">{l.desc}</p>
-            </Link>
-          ))}
+          {quickLinks.map((l) => {
+            const locked = l.requiresProfile && !profile;
+            if (locked) {
+              return (
+                <div
+                  key={l.href}
+                  className="rounded-2xl bg-[var(--cream)]/80 p-4 ring-1 ring-[var(--rose-light)]/20"
+                >
+                  <p className="text-sm font-bold text-[var(--muted)]">{l.label}</p>
+                  <p className="mt-1 text-[11px] text-[var(--muted)]">{l.desc}</p>
+                  <p className="mt-2 text-[10px] font-bold text-[var(--rose-dark)]">診断後に解放</p>
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="card-hover rounded-2xl bg-white p-4 ring-1 ring-[var(--rose-light)]/25"
+              >
+                <p className="text-sm font-bold text-[var(--ink)]">{l.label}</p>
+                <p className="mt-1 text-[11px] text-[var(--muted)]">{l.desc}</p>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

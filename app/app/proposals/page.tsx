@@ -66,7 +66,7 @@ export default function ProposalsPage() {
         href="/app/simulate"
         className="block rounded-xl bg-gradient-to-r from-[var(--rose-dark)] to-[var(--rose)] py-3 text-center text-sm font-bold text-white"
       >
-        シミュレーションで試す →
+        着せ替えプレビューで試す →
       </Link>
       <Link
         href="/app/salon"

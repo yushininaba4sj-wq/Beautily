@@ -23,6 +23,22 @@ export type ElementItem = {
   avoid?: string[];
 };
 
+/** 診断前から学べる4つの基礎要素 */
+export const FOUNDATION_CATEGORY_IDS: ElementCategoryId[] = [
+  "personalColor",
+  "bone",
+  "faceType",
+  "animal",
+];
+
+/** 診断後に「追加で調べる」で開放 */
+export const EXTENDED_CATEGORY_IDS: ElementCategoryId[] = [
+  "impression",
+  "style",
+  "charm",
+  "glowup",
+];
+
 export const ELEMENT_CATEGORIES: ElementCategory[] = [
   { id: "personalColor", label: "パーソナルカラー", short: "色" },
   { id: "bone", label: "骨格診断", short: "骨格" },
@@ -33,6 +49,39 @@ export const ELEMENT_CATEGORIES: ElementCategory[] = [
   { id: "charm", label: "顔の魅力", short: "魅力" },
   { id: "glowup", label: "垢抜け", short: "垢抜け" },
 ];
+
+export const FOUNDATION_CATEGORIES = ELEMENT_CATEGORIES.filter((c) =>
+  FOUNDATION_CATEGORY_IDS.includes(c.id)
+);
+
+export const EXTENDED_CATEGORIES = ELEMENT_CATEGORIES.filter((c) =>
+  EXTENDED_CATEGORY_IDS.includes(c.id)
+);
+
+export function isFoundationCategory(id: ElementCategoryId): boolean {
+  return FOUNDATION_CATEGORY_IDS.includes(id);
+}
+
+export function searchElements(
+  query: string,
+  scope: "foundation" | "extended" | "all" = "extended"
+): ElementItem[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const allowed =
+    scope === "foundation"
+      ? FOUNDATION_CATEGORY_IDS
+      : scope === "extended"
+        ? EXTENDED_CATEGORY_IDS
+        : [...FOUNDATION_CATEGORY_IDS, ...EXTENDED_CATEGORY_IDS];
+  return ELEMENT_ITEMS.filter(
+    (item) =>
+      allowed.includes(item.categoryId) &&
+      (item.name.toLowerCase().includes(q) ||
+        item.summary.toLowerCase().includes(q) ||
+        item.tips.some((t) => t.toLowerCase().includes(q)))
+  );
+}
 
 export const ELEMENT_ITEMS: ElementItem[] = [
   {

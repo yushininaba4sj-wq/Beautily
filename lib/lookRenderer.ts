@@ -3,8 +3,17 @@ import type { LookPreset } from "./lookPresets";
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
+    // data:/blob: に crossOrigin を付けると読み込み失敗・Canvas汚染の原因になる
+    if (src.startsWith("http://") || src.startsWith("https://")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => {
+      if (img.naturalWidth < 1 || img.naturalHeight < 1) {
+        reject(new Error("画像サイズが不正です"));
+        return;
+      }
+      resolve(img);
+    };
     img.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
     img.src = src;
   });
@@ -26,16 +35,17 @@ function applyHairTint(
   tint: { hex: string; strength: number }
 ) {
   const { r, g, b } = hexToRgb(tint.hex);
-  const grad = ctx.createLinearGradient(0, 0, 0, h * 0.55);
-  grad.addColorStop(0, `rgba(${r},${g},${b},${tint.strength})`);
-  grad.addColorStop(0.7, `rgba(${r},${g},${b},${tint.strength * 0.35})`);
+  const strength = Math.min(0.65, tint.strength * 1.15);
+  const grad = ctx.createLinearGradient(0, 0, 0, h * 0.58);
+  grad.addColorStop(0, `rgba(${r},${g},${b},${strength})`);
+  grad.addColorStop(0.65, `rgba(${r},${g},${b},${strength * 0.4})`);
   grad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.globalCompositeOperation = "multiply";
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = "soft-light";
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h * 0.5);
+  ctx.fillRect(0, 0, w, h * 0.52);
   ctx.globalCompositeOperation = "source-over";
 }
 
@@ -47,13 +57,12 @@ function applyMakeup(
 ) {
   const lip = hexToRgb(makeup.lipHex);
   const cheek = hexToRgb(makeup.cheekHex);
-  const s = makeup.strength;
+  const s = Math.min(0.55, makeup.strength * 1.2);
 
   ctx.globalCompositeOperation = "soft-light";
 
-  // チーク（左右）
   const cheekGrad = (cx: number) => {
-    const g = ctx.createRadialGradient(cx, h * 0.52, 0, cx, h * 0.52, w * 0.22);
+    const g = ctx.createRadialGradient(cx, h * 0.52, 0, cx, h * 0.52, w * 0.24);
     g.addColorStop(0, `rgba(${cheek.r},${cheek.g},${cheek.b},${s})`);
     g.addColorStop(1, "rgba(0,0,0,0)");
     return g;
@@ -63,9 +72,8 @@ function applyMakeup(
   ctx.fillStyle = cheekGrad(w * 0.72);
   ctx.fillRect(0, 0, w, h);
 
-  // リップ
-  const lipG = ctx.createRadialGradient(w * 0.5, h * 0.72, 0, w * 0.5, h * 0.72, w * 0.18);
-  lipG.addColorStop(0, `rgba(${lip.r},${lip.g},${lip.b},${s * 1.1})`);
+  const lipG = ctx.createRadialGradient(w * 0.5, h * 0.72, 0, w * 0.5, h * 0.72, w * 0.2);
+  lipG.addColorStop(0, `rgba(${lip.r},${lip.g},${lip.b},${s * 1.15})`);
   lipG.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = lipG;
   ctx.fillRect(0, 0, w, h);
@@ -79,7 +87,12 @@ function applyColorFilter(
   h: number,
   filter: NonNullable<LookPreset["filter"]>
 ) {
-  const imgData = ctx.getImageData(0, 0, w, h);
+  let imgData: ImageData;
+  try {
+    imgData = ctx.getImageData(0, 0, w, h);
+  } catch {
+    return;
+  }
   const d = imgData.data;
   const br = filter.brightness ?? 1;
   const ct = filter.contrast ?? 1;
@@ -115,16 +128,20 @@ export async function renderLookPreview(
   photoDataUrl: string,
   preset: LookPreset
 ): Promise<string> {
+  if (!photoDataUrl.startsWith("data:") && !photoDataUrl.startsWith("blob:") && !photoDataUrl.startsWith("http")) {
+    throw new Error("写真データが無効です。もう一度診断してください。");
+  }
+
   const img = await loadImage(photoDataUrl);
   const maxW = 640;
-  const scale = Math.min(1, maxW / img.width);
-  const w = Math.round(img.width * scale);
-  const h = Math.round(img.height * scale);
+  const scale = Math.min(1, maxW / img.naturalWidth);
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
 
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("描画に失敗しました");
 
   ctx.drawImage(img, 0, 0, w, h);
@@ -133,7 +150,11 @@ export async function renderLookPreview(
   if (preset.makeup) applyMakeup(ctx, w, h, preset.makeup);
   if (preset.filter) applyColorFilter(ctx, w, h, preset.filter);
 
-  return canvas.toDataURL("image/jpeg", 0.88);
+  try {
+    return canvas.toDataURL("image/jpeg", 0.88);
+  } catch {
+    throw new Error("プレビュー画像の作成に失敗しました");
+  }
 }
 
 export async function renderLookGallery(
