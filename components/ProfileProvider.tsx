@@ -8,12 +8,25 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { BeautyProfile } from "@/lib/types";
+import {
+  addPhotoToProfile,
+  getActivePhoto,
+  getActivePhotoUrl,
+  removePhotoFromProfile,
+  setActivePhotoOnProfile,
+} from "@/lib/photos";
 import { loadProfile, saveProfile } from "@/lib/storage";
+import type { BeautyProfile, UserPhoto } from "@/lib/types";
 
 type ProfileContextValue = {
   profile: BeautyProfile | null;
+  photos: UserPhoto[];
+  activePhoto: UserPhoto | null;
+  activePhotoUrl: string | null;
   setProfile: (p: BeautyProfile | null) => void;
+  setActivePhoto: (photoId: string) => void;
+  addPhoto: (url: string, options?: { setActive?: boolean; label?: string }) => BeautyProfile | null;
+  removePhoto: (photoId: string) => void;
   refresh: () => void;
 };
 
@@ -37,6 +50,37 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setProfileState(p);
   }, []);
 
+  const photos = profile?.photos ?? [];
+  const activePhoto = getActivePhoto(profile);
+  const activePhotoUrl = getActivePhotoUrl(profile);
+
+  const setActivePhoto = useCallback(
+    (photoId: string) => {
+      if (!profile) return;
+      const next = setActivePhotoOnProfile(profile, photoId);
+      if (next) setProfile(next);
+    },
+    [profile, setProfile]
+  );
+
+  const addPhoto = useCallback(
+    (url: string, options?: { setActive?: boolean; label?: string }) => {
+      if (!profile) return null;
+      const next = addPhotoToProfile(profile, url, options);
+      setProfile(next);
+      return next;
+    },
+    [profile, setProfile]
+  );
+
+  const removePhoto = useCallback(
+    (photoId: string) => {
+      if (!profile) return;
+      setProfile(removePhotoFromProfile(profile, photoId));
+    },
+    [profile, setProfile]
+  );
+
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
@@ -46,7 +90,19 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ProfileContext.Provider value={{ profile, setProfile, refresh }}>
+    <ProfileContext.Provider
+      value={{
+        profile,
+        photos,
+        activePhoto,
+        activePhotoUrl,
+        setProfile,
+        setActivePhoto,
+        addPhoto,
+        removePhoto,
+        refresh,
+      }}
+    >
       {children}
     </ProfileContext.Provider>
   );

@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { Card, SectionTitle, Tag } from "@/components/Card";
+import { PhotoGallery } from "@/components/PhotoGallery";
 import { useProfile } from "@/components/ProfileProvider";
+import { MAX_PHOTOS } from "@/lib/photos";
 
 export default function ChartPage() {
-  const { profile } = useProfile();
+  const { profile, photos, activePhoto, setActivePhoto, removePhoto } = useProfile();
 
   if (!profile) {
     return (
@@ -41,11 +43,29 @@ export default function ChartPage() {
         診断日：{new Date(profile.analyzedAt).toLocaleDateString("ja-JP")}
       </p>
 
-      {profile.photoUrl && (
+      {photos.length > 0 && (
+        <Card>
+          <PhotoGallery
+            photos={photos}
+            activeId={profile.activePhotoId ?? activePhoto?.id ?? null}
+            onSelect={setActivePhoto}
+            onRemove={photos.length > 1 ? removePhoto : undefined}
+            maxPhotos={MAX_PHOTOS}
+          />
+          <Link
+            href="/app/scan"
+            className="mt-3 block text-center text-xs font-bold text-[var(--rose-dark)]"
+          >
+            写真を追加・再診断 →
+          </Link>
+        </Card>
+      )}
+
+      {activePhoto?.url && (
         <Card className="flex items-center gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={profile.photoUrl}
+            src={activePhoto.url}
             alt=""
             className="h-24 w-24 rounded-2xl object-cover"
           />
@@ -54,6 +74,11 @@ export default function ChartPage() {
               {profile.animalFace} × {profile.personalColor}
             </p>
             <p className="text-sm text-[var(--muted)]">{profile.boneStructure}</p>
+            {photos.length > 1 && (
+              <p className="mt-1 text-[10px] text-[var(--muted)]">
+                選択中: {activePhoto.label}
+              </p>
+            )}
           </div>
         </Card>
       )}

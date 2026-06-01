@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, SectionTitle } from "@/components/Card";
+import { PhotoGallery } from "@/components/PhotoGallery";
 import { useProfile } from "@/components/ProfileProvider";
+import { MAX_PHOTOS } from "@/lib/photos";
 import {
   buildFinishPreset,
   HAIR_COLOR_PRESETS,
@@ -25,8 +27,19 @@ const tabs: { id: SimTab; label: string }[] = [
   { id: "finish", label: "完成形" },
 ];
 
+function cacheKey(photoId: string, presetId: string) {
+  return `${photoId}:${presetId}`;
+}
+
 export default function SimulatePage() {
-  const { profile } = useProfile();
+  const {
+    profile,
+    activePhotoUrl,
+    photos,
+    activePhoto,
+    setActivePhoto,
+    removePhoto,
+  } = useProfile();
   const [tab, setTab] = useState<SimTab>("hairColor");
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -70,11 +83,22 @@ export default function SimulatePage() {
 
   const picked = presets.find((p) => p.id === pickedId) || null;
 
+  const photoId = activePhoto?.id ?? "default";
+
+  useEffect(() => {
+    setCache({});
+    cacheRef.current = {};
+    setPreviewUrl(null);
+    setPickedId(null);
+    setError(null);
+  }, [photoId]);
+
   const generateOne = useCallback(
     async (preset: LookPreset) => {
-      if (!profile?.photoUrl) return;
+      if (!activePhotoUrl) return;
+      const key = cacheKey(photoId, preset.id);
 
-      const cached = cacheRef.current[preset.id];
+      const cached = cacheRef.current[key];
       if (cached) {
         setPreviewUrl(cached);
         setError(null);
@@ -86,9 +110,9 @@ export default function SimulatePage() {
       setPreviewUrl(null);
 
       try {
-        const imageUrl = await renderLookPreview(profile.photoUrl, preset);
-        setCache((c) => ({ ...c, [preset.id]: imageUrl }));
-        cacheRef.current = { ...cacheRef.current, [preset.id]: imageUrl };
+        const imageUrl = await renderLookPreview(activePhotoUrl, preset);
+        setCache((c) => ({ ...c, [key]: imageUrl }));
+        cacheRef.current = { ...cacheRef.current, [key]: imageUrl };
         setPreviewUrl(imageUrl);
       } catch (e) {
         const msg =
@@ -98,13 +122,14 @@ export default function SimulatePage() {
         setLoading(false);
       }
     },
-    [profile?.photoUrl]
+    [activePhotoUrl, photoId]
   );
 
   const onPick = (preset: LookPreset) => {
     setPickedId(preset.id);
     setError(null);
-    const cached = cacheRef.current[preset.id];
+    const key = cacheKey(photoId, preset.id);
+    const cached = cacheRef.current[key];
     if (cached) {
       setPreviewUrl(cached);
       return;
@@ -122,16 +147,17 @@ export default function SimulatePage() {
 
   // タブ切替時は先頭スタイルを自動選択してプレビュー生成
   useEffect(() => {
-    if (!profile?.photoUrl || presets.length === 0) return;
+    if (!activePhotoUrl || presets.length === 0) return;
     const first = presets[0];
     setPickedId(first.id);
-    const cached = cacheRef.current[first.id];
+    const key = cacheKey(photoId, first.id);
+    const cached = cacheRef.current[key];
     if (cached) {
       setPreviewUrl(cached);
       return;
     }
     void generateOne(first);
-  }, [tab, profile?.photoUrl, presets, generateOne]);
+  }, [tab, activePhotoUrl, photoId, presets, generateOne]);
 
   if (!profile) {
     return (
@@ -152,7 +178,7 @@ export default function SimulatePage() {
     );
   }
 
-  if (!profile.photoUrl) {
+  if (!activePhotoUrl) {
     return (
       <Card>
         <p className="text-sm text-[var(--muted)]">
@@ -169,8 +195,27 @@ export default function SimulatePage() {
     <div className="space-y-5">
       <SectionTitle sub="Simulation" title="シミュレーション" />
       <p className="-mt-2 text-sm text-[var(--muted)]">
-        スタイルをタップすると、あなたの写真に髪色・メイク・色味を反映したプレビューが表示されます。
+        使う写真を選び、スタイルをタップするとプレビューが表示されます。
       </p>
+
+      {photos.length > 0 && (
+        <Card>
+          <PhotoGallery
+            photos={photos}
+            activeId={profile.activePhotoId ?? activePhoto?.id ?? null}
+            onSelect={setActivePhoto}
+            onRemove={photos.length > 1 ? removePhoto : undefined}
+            maxPhotos={MAX_PHOTOS}
+            compact
+          />
+          <Link
+            href="/app/scan"
+            className="mt-2 block text-center text-xs font-bold text-[var(--rose-dark)]"
+          >
+            新しい写真を追加 →
+          </Link>
+        </Card>
+      )}
 
       <div className="flex gap-1 overflow-x-auto pb-1">
         {tabs.map((t) => (
@@ -201,7 +246,7 @@ export default function SimulatePage() {
           <div className="grid grid-cols-2 gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={profile.photoUrl}
+              src={activePhotoUrl}
               alt="元の写真"
               className="aspect-[3/4] w-full rounded-xl object-cover"
             />
@@ -260,7 +305,9 @@ export default function SimulatePage() {
               }`}
             >
               {p.name}
-              {cache[p.id] && <span className="ml-1 opacity-70">✓</span>}
+              {cache[cacheKey(photoId, p.id)] && (
+                <span className="ml-1 opacity-70">✓</span>
+              )}
             </button>
           ))}
         </div>

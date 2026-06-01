@@ -47,9 +47,21 @@ export interface GlowUpTip {
   advice: string;
 }
 
+export interface UserPhoto {
+  id: string;
+  url: string;
+  label: string;
+  addedAt: string;
+  analyzedAt?: string;
+}
+
 export interface BeautyProfile {
   id: string;
   photoUrl: string | null;
+  /** 登録した顔写真（複数可） */
+  photos?: UserPhoto[];
+  /** シミュレーション等で使う選択中の写真 */
+  activePhotoId?: string | null;
   analyzedAt: string;
   personalColor: PersonalColor;
   boneStructure: BoneStructure;

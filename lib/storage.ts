@@ -1,3 +1,4 @@
+import { ensurePhotosArray } from "./photos";
 import type {
   BeautyProfile,
   ChatMessage,
@@ -22,7 +23,7 @@ function migrateProfile(p: BeautyProfile): BeautyProfile {
     const v = s as string;
     return v === "韓国アイドル系" ? "韓国スター系" : s;
   });
-  return { ...p, makeup, beautyStyles };
+  return ensurePhotosArray({ ...p, makeup, beautyStyles });
 }
 
 export function loadProfile(): BeautyProfile | null {
