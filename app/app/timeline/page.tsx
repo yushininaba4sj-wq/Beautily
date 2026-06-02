@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Card, SectionTitle, Tag } from "@/components/Card";
 import { useProfile } from "@/components/ProfileProvider";
 import {
@@ -14,10 +15,15 @@ import {
   type ElementCategoryId,
   type ElementItem,
 } from "@/lib/beautyElements";
+import {
+  FEED_TOPICS,
+  getTimelineFeed,
+  type FeedTopic,
+} from "@/lib/beautyTimelineFeed";
 import { loadTimeline } from "@/lib/storage";
 import type { TimelineEntry } from "@/lib/types";
 
-type MainTab = "foundation" | "more" | "history";
+type MainTab = "foundation" | "more" | "feed" | "history";
 
 function ElementDetailCard({
   item,
@@ -62,6 +68,7 @@ function ElementDetailCard({
 
 export default function TimelinePage() {
   const { profile } = useProfile();
+  const searchParams = useSearchParams();
   const hasDiagnosis = Boolean(profile);
   const [mainTab, setMainTab] = useState<MainTab>("foundation");
   const [foundationCategory, setFoundationCategory] =
@@ -70,10 +77,33 @@ export default function TimelinePage() {
     useState<ElementCategoryId | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [history, setHistory] = useState<TimelineEntry[]>([]);
+  const [feedTopic, setFeedTopic] = useState<FeedTopic>("all");
+  const [feedRelatedOnly, setFeedRelatedOnly] = useState(true);
 
   useEffect(() => {
     setHistory(loadTimeline());
   }, [profile]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    const q = searchParams.get("q");
+    const topic = searchParams.get("topic");
+    const related = searchParams.get("related");
+
+    if (tab === "foundation" || tab === "more" || tab === "feed" || tab === "history") {
+      if (tab === "more" && !hasDiagnosis) return;
+      setMainTab(tab);
+    }
+    if (q) setSearchQuery(q);
+    if (
+      topic &&
+      ["all", "ヘア", "メイク", "ファッション", "スキンケア", "マインド"].includes(topic)
+    ) {
+      setFeedTopic(topic as FeedTopic);
+    }
+    if (related === "1") setFeedRelatedOnly(true);
+    if (related === "0") setFeedRelatedOnly(false);
+  }, [searchParams, hasDiagnosis]);
 
   const myTags = profile ? getProfileElementTags(profile) : [];
 
@@ -89,6 +119,19 @@ export default function TimelinePage() {
     if (!extendedCategory) return [];
     return getItemsByCategory(extendedCategory);
   }, [extendedCategory, searchQuery]);
+
+  const feedPosts = useMemo(
+    () => getTimelineFeed(profile, feedTopic, feedRelatedOnly),
+    [profile, feedTopic, feedRelatedOnly]
+  );
+  const feedKeyword = searchQuery.trim();
+  const filteredFeedPosts = useMemo(() => {
+    if (!feedKeyword) return feedPosts;
+    const kw = feedKeyword.toLowerCase();
+    return feedPosts.filter((p) =>
+      [p.title, p.body, p.author, ...p.tags, ...p.topics].join(" ").toLowerCase().includes(kw)
+    );
+  }, [feedPosts, feedKeyword]);
 
   const openFoundation = (catId: ElementCategoryId) => {
     setMainTab("foundation");
@@ -177,6 +220,17 @@ export default function TimelinePage() {
           {!hasDiagnosis && (
             <span className="mt-0.5 block text-[9px] font-normal">診断後</span>
           )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainTab("feed")}
+          className={`flex-1 rounded-xl py-2 text-xs font-bold ${
+            mainTab === "feed"
+              ? "bg-[var(--ink)] text-white"
+              : "bg-white ring-1 ring-[var(--rose-light)]/40"
+          }`}
+        >
+          美容SNS
         </button>
         <button
           type="button"
@@ -354,6 +408,95 @@ export default function TimelinePage() {
             診断する →
           </Link>
         </Card>
+      )}
+
+      {mainTab === "feed" && (
+        <div className="space-y-3">
+          <Card className="p-3">
+            <p className="text-sm font-bold text-[var(--ink)]">美容専用タイムライン</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              自分の系統に合う投稿だけ表示できます。気になる話題だけ選んでチェック。
+            </p>
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-[var(--cream)] px-3 py-2">
+              <p className="text-xs font-semibold text-[var(--ink)]">関連情報だけ表示</p>
+              <button
+                type="button"
+                onClick={() => setFeedRelatedOnly((v) => !v)}
+                className={`rounded-full px-3 py-1 text-[10px] font-bold ${
+                  feedRelatedOnly
+                    ? "bg-[var(--rose-dark)] text-white"
+                    : "bg-white text-[var(--muted)] ring-1 ring-[var(--rose-light)]/40"
+                }`}
+              >
+                {feedRelatedOnly ? "ON" : "OFF"}
+              </button>
+            </div>
+            {!profile && (
+              <p className="mt-2 text-[10px] text-[var(--muted)]">
+                ※ 診断後は「あなた向け」がより正確になります
+              </p>
+            )}
+          </Card>
+
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {FEED_TOPICS.map((topic) => (
+              <button
+                key={topic}
+                type="button"
+                onClick={() => setFeedTopic(topic)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${
+                  feedTopic === topic
+                    ? "bg-[var(--rose-dark)] text-white"
+                    : "bg-white text-[var(--muted)] ring-1 ring-[var(--rose-light)]/40"
+                }`}
+              >
+                {topic === "all" ? "すべて" : topic}
+              </button>
+            ))}
+          </div>
+          <Card className="p-3">
+            <label className="text-xs font-bold text-[var(--ink)]">投稿を検索</label>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="例: 前髪、透明感、石原さとみ"
+              className="mt-2 w-full rounded-xl border border-[var(--rose-light)]/50 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--rose-dark)]/30"
+            />
+          </Card>
+
+          {filteredFeedPosts.length === 0 && (
+            <Card>
+              <p className="text-sm text-[var(--muted)]">
+                条件に合う投稿がありません。トピックを「すべて」にするか、
+                「関連情報だけ」をOFFにしてください。
+              </p>
+            </Card>
+          )}
+
+          {filteredFeedPosts.map((post) => (
+            <Card key={post.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-[var(--muted)]">@{post.author}</p>
+                  <h3 className="mt-1 font-display text-lg font-semibold">{post.title}</h3>
+                </div>
+                <span className="text-[10px] font-semibold text-[var(--muted)]">
+                  {post.publishedAt}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]">{post.body}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {post.topics.map((topic) => (
+                  <Tag key={`${post.id}-${topic}`}>{topic}</Tag>
+                ))}
+                {post.tags.map((tag) => (
+                  <Tag key={`${post.id}-${tag}`}>#{tag}</Tag>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
 
       {mainTab === "history" && (

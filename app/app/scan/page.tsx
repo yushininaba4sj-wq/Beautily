@@ -366,6 +366,43 @@ export default function ScanPage() {
 
           <FaceInsightPanels profile={result} />
 
+          <Card className="border border-[var(--rose-light)]/60 bg-[var(--cream)]/30">
+            <p className="text-sm font-bold text-[var(--ink)]">これからどうすべき？</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              診断結果から、次の一手を細かく選べます。
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <Link
+                href={`/app/timeline?tab=feed&related=1&q=${encodeURIComponent(
+                  result.faceType
+                )}`}
+                className="rounded-xl bg-white px-3 py-2 text-center text-xs font-bold ring-1 ring-[var(--rose-light)]/40"
+              >
+                顔タイプの関連投稿を見る
+              </Link>
+              <Link
+                href={`/app/timeline?tab=feed&related=1&q=${encodeURIComponent(
+                  result.personalColor
+                )}`}
+                className="rounded-xl bg-white px-3 py-2 text-center text-xs font-bold ring-1 ring-[var(--rose-light)]/40"
+              >
+                パーソナルカラー投稿
+              </Link>
+              <Link
+                href={`/app/timeline?tab=more&q=${encodeURIComponent("前髪")}`}
+                className="rounded-xl bg-white px-3 py-2 text-center text-xs font-bold ring-1 ring-[var(--rose-light)]/40"
+              >
+                追加検索（前髪・髪型）
+              </Link>
+              <Link
+                href="/app/roadmap"
+                className="rounded-xl bg-[var(--ink)] px-3 py-2 text-center text-xs font-bold text-white"
+              >
+                垢抜け計画を細かく見る
+              </Link>
+            </div>
+          </Card>
+
           <div className="flex flex-col gap-2">
             <Link
               href="/app/discover"

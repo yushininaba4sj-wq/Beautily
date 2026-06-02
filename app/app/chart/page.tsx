@@ -125,6 +125,40 @@ export default function ChartPage() {
 
       <FaceInsightPanels profile={profile} />
 
+      <Card className="border border-[var(--rose-light)]/60 bg-[var(--cream)]/30">
+        <p className="text-sm font-bold text-[var(--ink)]">診断結果から次へ</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <Link
+            href={`/app/timeline?tab=feed&related=1&q=${encodeURIComponent(
+              profile.faceType
+            )}`}
+            className="rounded-xl bg-white px-3 py-2 text-center text-xs font-bold ring-1 ring-[var(--rose-light)]/40"
+          >
+            顔タイプ関連投稿
+          </Link>
+          <Link
+            href={`/app/timeline?tab=feed&related=1&q=${encodeURIComponent(
+              profile.animalFace
+            )}`}
+            className="rounded-xl bg-white px-3 py-2 text-center text-xs font-bold ring-1 ring-[var(--rose-light)]/40"
+          >
+            動物顔関連投稿
+          </Link>
+          <Link
+            href={`/app/timeline?tab=more&q=${encodeURIComponent("透明感")}`}
+            className="rounded-xl bg-white px-3 py-2 text-center text-xs font-bold ring-1 ring-[var(--rose-light)]/40"
+          >
+            追加検索（透明感）
+          </Link>
+          <Link
+            href="/app/simulate"
+            className="rounded-xl bg-[var(--ink)] px-3 py-2 text-center text-xs font-bold text-white"
+          >
+            診断軸でシミュレーション
+          </Link>
+        </div>
+      </Card>
+
       <Link
         href="/app/roadmap"
         className="block rounded-xl bg-[var(--ink)] py-3 text-center text-sm font-bold text-white"

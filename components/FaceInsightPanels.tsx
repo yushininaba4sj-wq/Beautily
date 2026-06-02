@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, ScoreBar, Tag } from "@/components/Card";
 import {
   getCelebrityMatches,
@@ -23,6 +24,8 @@ function Chevron({ open }: { open: boolean }) {
 
 export function FaceInsightPanels({ profile }: { profile: BeautyProfile }) {
   const [open, setOpen] = useState<PanelId>(null);
+  const [openMetric, setOpenMetric] = useState<string | null>(null);
+  const [openCelebrity, setOpenCelebrity] = useState<string | null>(null);
   const deviation = getFaceDeviationInsight(profile.charm);
   const celebrities = getCelebrityMatches(profile);
 
@@ -61,6 +64,20 @@ export function FaceInsightPanels({ profile }: { profile: BeautyProfile }) {
       {open === "deviation" && (
         <Card className="border border-[var(--rose-light)]/60 bg-[var(--cream)]/30">
           <p className="text-sm leading-relaxed text-[var(--ink)]">{deviation.summary}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <Link
+              href="/app/roadmap"
+              className="rounded-xl bg-[var(--ink)] px-3 py-2 text-center text-xs font-bold text-white"
+            >
+              偏差値を伸ばす計画へ
+            </Link>
+            <Link
+              href="/app/simulate"
+              className="rounded-xl border border-[var(--rose-light)] bg-white px-3 py-2 text-center text-xs font-bold text-[var(--rose-dark)]"
+            >
+              すぐ試す（シミュレーション）
+            </Link>
+          </div>
           <p className="mt-3 text-xs font-bold text-[var(--ink)]">項目別の偏差値</p>
           <div className="mt-3 space-y-4">
             {deviation.metrics.map((m) => (
@@ -68,7 +85,13 @@ export function FaceInsightPanels({ profile }: { profile: BeautyProfile }) {
                 key={m.label}
                 className="rounded-xl bg-white p-3 ring-1 ring-[var(--rose-light)]/20"
               >
-                <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenMetric((prev) => (prev === m.label ? null : m.label))
+                  }
+                  className="flex w-full items-center justify-between"
+                >
                   <p className="text-sm font-bold">{m.label}</p>
                   <p className="text-sm">
                     <span className="font-bold text-[var(--rose-dark)]">{m.deviation}</span>
@@ -76,10 +99,24 @@ export function FaceInsightPanels({ profile }: { profile: BeautyProfile }) {
                       (スコア {m.score})
                     </span>
                   </p>
-                </div>
+                </button>
                 <ScoreBar label={m.label} value={m.score} />
-                <p className="mt-2 text-xs text-[var(--muted)]">{m.description}</p>
-                <p className="mt-1 text-xs text-[var(--ink)]">→ {m.tip}</p>
+                {openMetric === m.label ? (
+                  <>
+                    <p className="mt-2 text-xs text-[var(--muted)]">{m.description}</p>
+                    <p className="mt-1 text-xs text-[var(--ink)]">→ {m.tip}</p>
+                    <Link
+                      href={`/app/timeline?tab=more&q=${encodeURIComponent(m.label)}`}
+                      className="mt-2 inline-block text-xs font-bold text-[var(--rose-dark)]"
+                    >
+                      この項目の改善情報を見る →
+                    </Link>
+                  </>
+                ) : (
+                  <p className="mt-2 text-[10px] font-semibold text-[var(--muted)]">
+                    もう一度タップで「なぜそうなるか」と改善アクションを見る
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -125,21 +162,56 @@ export function FaceInsightPanels({ profile }: { profile: BeautyProfile }) {
                 key={celeb.name}
                 className="rounded-xl bg-white p-4 ring-1 ring-[var(--rose-light)]/20"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-display text-lg font-semibold">{celeb.name}</p>
-                  <span className="shrink-0 rounded-full bg-[var(--rose-dark)] px-2.5 py-1 text-[10px] font-bold text-white">
-                    類似 {celeb.similarityPercent}%
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-[var(--muted)]">{celeb.impression}</p>
-                <p className="mt-3 text-xs font-bold">似ているポイント</p>
-                <ul className="mt-1 space-y-1 text-sm text-[var(--ink)]">
-                  {celeb.sharedTraits.map((t) => (
-                    <li key={t}>· {t}</li>
-                  ))}
-                </ul>
-                <p className="mt-3 text-xs font-bold text-[var(--rose-dark)]">おすすめの参考スタイル</p>
-                <p className="mt-1 text-sm text-[var(--ink)]">{celeb.styleReference}</p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenCelebrity((prev) => (prev === celeb.name ? null : celeb.name))
+                  }
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-display text-lg font-semibold">{celeb.name}</p>
+                    <span className="shrink-0 rounded-full bg-[var(--rose-dark)] px-2.5 py-1 text-[10px] font-bold text-white">
+                      類似 {celeb.similarityPercent}%
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--muted)]">{celeb.impression}</p>
+                  {openCelebrity !== celeb.name && (
+                    <p className="mt-2 text-[10px] font-semibold text-[var(--muted)]">
+                      もう一度タップで「似ている理由」と次にやることを見る
+                    </p>
+                  )}
+                </button>
+                {openCelebrity === celeb.name && (
+                  <>
+                    <p className="mt-3 text-xs font-bold">似ているポイント</p>
+                    <ul className="mt-1 space-y-1 text-sm text-[var(--ink)]">
+                      {celeb.sharedTraits.map((t) => (
+                        <li key={t}>· {t}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-xs font-bold text-[var(--rose-dark)]">
+                      おすすめの参考スタイル
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--ink)]">{celeb.styleReference}</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <Link
+                        href="/app/simulate"
+                        className="rounded-xl bg-[var(--ink)] px-3 py-2 text-center text-xs font-bold text-white"
+                      >
+                        この系統で試す
+                      </Link>
+                      <Link
+                        href={`/app/timeline?tab=feed&related=1&q=${encodeURIComponent(
+                          celeb.name
+                        )}`}
+                        className="rounded-xl border border-[var(--rose-light)] px-3 py-2 text-center text-xs font-bold text-[var(--rose-dark)]"
+                      >
+                        関連投稿を読む
+                      </Link>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
