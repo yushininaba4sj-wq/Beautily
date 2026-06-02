@@ -79,6 +79,7 @@ export default function TimelinePage() {
   const [history, setHistory] = useState<TimelineEntry[]>([]);
   const [feedTopic, setFeedTopic] = useState<FeedTopic>("all");
   const [feedRelatedOnly, setFeedRelatedOnly] = useState(true);
+  const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
 
   useEffect(() => {
     setHistory(loadTimeline());
@@ -463,6 +464,10 @@ export default function TimelinePage() {
               placeholder="例: 前髪、透明感、石原さとみ"
               className="mt-2 w-full rounded-xl border border-[var(--rose-light)]/50 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--rose-dark)]/30"
             />
+            <p className="mt-2 text-[10px] text-[var(--muted)]">
+              表示中: {filteredFeedPosts.length}件
+              {feedRelatedOnly ? "（あなた向けのみ）" : ""}
+            </p>
           </Card>
 
           {filteredFeedPosts.length === 0 && (
@@ -477,15 +482,37 @@ export default function TimelinePage() {
           {filteredFeedPosts.map((post) => (
             <Card key={post.id}>
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs text-[var(--muted)]">@{post.author}</p>
-                  <h3 className="mt-1 font-display text-lg font-semibold">{post.title}</h3>
+                <div className="flex min-w-0 gap-2">
+                  <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--cream)] text-[10px] font-bold text-[var(--rose-dark)]">
+                    {post.author.slice(0, 1).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-[var(--muted)]">@{post.author}</p>
+                    <h3 className="mt-1 font-display text-lg font-semibold leading-snug">
+                      {post.title}
+                    </h3>
+                  </div>
                 </div>
-                <span className="text-[10px] font-semibold text-[var(--muted)]">
+                <span className="shrink-0 text-[10px] font-semibold text-[var(--muted)]">
                   {post.publishedAt}
                 </span>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]">{post.body}</p>
+              <p
+                className={`mt-2 text-sm leading-relaxed text-[var(--ink)] ${
+                  expandedPostId === post.id ? "" : "line-clamp-3"
+                }`}
+              >
+                {post.body}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedPostId((prev) => (prev === post.id ? null : post.id))
+                }
+                className="mt-1 text-[11px] font-bold text-[var(--rose-dark)]"
+              >
+                {expandedPostId === post.id ? "閉じる" : "続きを読む"}
+              </button>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {post.topics.map((topic) => (
                   <Tag key={`${post.id}-${topic}`}>{topic}</Tag>
@@ -493,6 +520,10 @@ export default function TimelinePage() {
                 {post.tags.map((tag) => (
                   <Tag key={`${post.id}-${tag}`}>#{tag}</Tag>
                 ))}
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-[var(--cream)] pt-2 text-[10px] text-[var(--muted)]">
+                <span>参考情報</span>
+                <span>保存 · 共有</span>
               </div>
             </Card>
           ))}
