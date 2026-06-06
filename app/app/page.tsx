@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { Card, SectionTitle } from "@/components/Card";
+import { SavedPreferencesSummary } from "@/components/BeautyPreferencesForm";
 import { TransformationJourney } from "@/components/TransformationJourney";
 import { useProfile } from "@/components/ProfileProvider";
 import { shareText } from "@/lib/diagnosis";
 import { getGlowPotential, getTransformationJourney, getVisionMessage } from "@/lib/newSelf";
 
 const quickLinks = [
-  { href: "/app/setup", label: "肌・悩み・予算", desc: "条件を入力しておすすめ生成", requiresProfile: false, highlight: true },
-  { href: "/app/recommend", label: "おすすめ商品", desc: "スキンケア・メイク・服", requiresProfile: false, highlight: true },
+  { href: "/app/setup", label: "マイ設定", desc: "予算・肌・悩みを保存", requiresProfile: false, highlight: true },
+  { href: "/app/recommend", label: "おすすめ商品", desc: "保存した設定で提案", requiresProfile: false, highlight: true },
   { href: "/app/discover", label: "新しい私を探す", desc: "3つの可能性・伸びしろ", requiresProfile: true, highlight: false },
   { href: "/app/simulate", label: "シミュレーション", desc: "髪・メイク・服を大胆に試す", requiresProfile: true },
   { href: "/app/timeline", label: "美容タイムライン", desc: "基礎から学ぶ・深掘り", requiresProfile: false },
@@ -53,6 +54,8 @@ export default function AppHomePage() {
           {profile ? "新しい私を探す →" : "無料で診断スタート"}
         </Link>
       </section>
+
+      <SavedPreferencesSummary />
 
       {profile && glow && (
         <Link href="/app/discover" className="block">

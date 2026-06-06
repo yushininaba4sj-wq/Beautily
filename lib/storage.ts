@@ -124,9 +124,16 @@ export function saveCosmetics(items: CosmeticItem[]): void {
 }
 
 export function defaultPreferences(profile?: BeautyProfile | null): BeautyPreferences {
+  const monthlyBudget = 10000;
+  const skincare = Math.round(monthlyBudget * 0.38);
+  const makeup = Math.round(monthlyBudget * 0.32);
   return {
     age: 20,
-    monthlyBudget: 10000,
+    monthlyBudget,
+    useCustomBudget: false,
+    budgetSkincare: skincare,
+    budgetMakeup: makeup,
+    budgetFashion: monthlyBudget - skincare - makeup,
     skinTypes: [],
     skinConditions: [],
     concerns: [],
@@ -145,6 +152,18 @@ export function loadPreferences(profile?: BeautyProfile | null): BeautyPreferenc
       ...defaultPreferences(profile),
       ...parsed,
       personalColor: parsed.personalColor ?? profile?.personalColor ?? null,
+      useCustomBudget: parsed.useCustomBudget ?? false,
+      budgetSkincare:
+        parsed.budgetSkincare ??
+        Math.round((parsed.monthlyBudget ?? 10000) * 0.38),
+      budgetMakeup:
+        parsed.budgetMakeup ??
+        Math.round((parsed.monthlyBudget ?? 10000) * 0.32),
+      budgetFashion:
+        parsed.budgetFashion ??
+        (parsed.monthlyBudget ?? 10000) -
+          Math.round((parsed.monthlyBudget ?? 10000) * 0.38) -
+          Math.round((parsed.monthlyBudget ?? 10000) * 0.32),
     };
   } catch {
     return defaultPreferences(profile);

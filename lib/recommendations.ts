@@ -138,15 +138,24 @@ export function buildRecommendationPlan(
   prefs: BeautyPreferences,
   profile: BeautyProfile | null = null,
 ): RecommendationPlan {
-  const skincareBudget = Math.round(prefs.monthlyBudget * 0.38);
-  const makeupBudget = Math.round(prefs.monthlyBudget * 0.32);
-  const fashionBudget = prefs.monthlyBudget - skincareBudget - makeupBudget;
+  const skincareBudget = prefs.useCustomBudget
+    ? prefs.budgetSkincare
+    : Math.round(prefs.monthlyBudget * 0.38);
+  const makeupBudget = prefs.useCustomBudget
+    ? prefs.budgetMakeup
+    : Math.round(prefs.monthlyBudget * 0.32);
+  const fashionBudget = prefs.useCustomBudget
+    ? prefs.budgetFashion
+    : prefs.monthlyBudget - skincareBudget - makeupBudget;
 
   const skincare = pickForArea("skincare", skincareBudget, prefs, profile);
   const makeup = pickForArea("makeup", makeupBudget, prefs, profile);
   const fashion = pickForArea("fashion", fashionBudget, prefs, profile);
 
   const grandTotal = skincare.total + makeup.total + fashion.total;
+  const budgetCap = prefs.useCustomBudget
+    ? skincareBudget + makeupBudget + fashionBudget
+    : prefs.monthlyBudget;
   const concernLabel = prefs.concerns.length ? prefs.concerns.join("・") : "バランスケア";
   const skinLabel = prefs.skinTypes.length ? prefs.skinTypes.join("・") : "混合肌想定";
   const pc = profile?.personalColor ?? prefs.personalColor;
@@ -160,7 +169,7 @@ export function buildRecommendationPlan(
     makeupTotal: makeup.total,
     fashionTotal: fashion.total,
     grandTotal,
-    remainingBudget: Math.max(0, prefs.monthlyBudget - grandTotal),
+    remainingBudget: Math.max(0, budgetCap - grandTotal),
     summary: `${prefs.age}歳 · ${skinLabel} · ${concernLabel} · 予算¥${prefs.monthlyBudget.toLocaleString()}。${
       pc ? `${pc}向け` : "肌と悩み"
     }に合わせて、スキンケア・メイク・ファッションを選びました。`,

@@ -31,6 +31,11 @@ export type ProductCategory =
 export interface BeautyPreferences {
   age: number;
   monthlyBudget: number;
+  /** カテゴリ別予算を自分で指定する */
+  useCustomBudget: boolean;
+  budgetSkincare: number;
+  budgetMakeup: number;
+  budgetFashion: number;
   skinTypes: SkinType[];
   skinConditions: SkinCondition[];
   concerns: SkinConcern[];

@@ -1,25 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { SectionTitle } from "@/components/Card";
 import { BeautyPreferencesForm } from "@/components/BeautyPreferencesForm";
 
 export default function SetupPage() {
-  const router = useRouter();
-
   return (
     <div className="space-y-5">
-      <SectionTitle
-        sub="Profile"
-        title="肌・悩み・予算を設定"
-      />
+      <SectionTitle sub="My Settings" title="マイ設定" />
       <p className="-mt-2 text-sm leading-relaxed text-[var(--muted)]">
-        肌質（乾燥肌・脂性肌など）、赤み・くすみ、パーソナルカラー、悩み（しわ・ニキビ・しみ・美白）、年齢、予算を入力すると、スキンケア・メイク・服まで予算内でおすすめを提案します。
+        年齢・予算・肌質・悩み・パーソナルカラーを自分で設定して保存できます。保存した内容は、おすすめ商品・コスメ・服の提案に自動で使われます。
       </p>
-      <BeautyPreferencesForm
-        onSaved={() => router.push("/app/recommend")}
-        submitLabel="この条件でおすすめを見る"
-      />
+      <BeautyPreferencesForm />
     </div>
   );
 }

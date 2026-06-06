@@ -7,9 +7,9 @@ import { useProfile } from "@/components/ProfileProvider";
 const items = [
   {
     href: "/app/setup",
-    label: "肌・悩み・予算設定",
-    icon: "◎",
-    desc: "肌質・悩み・年齢・予算を入力",
+    label: "マイ設定",
+    icon: "⚙",
+    desc: "予算・肌質・悩みを自分で保存",
     requiresProfile: false,
     section: "おすすめ",
   },

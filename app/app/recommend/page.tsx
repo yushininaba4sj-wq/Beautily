@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Card, SectionTitle } from "@/components/Card";
 import { RecommendationResults } from "@/components/RecommendationResults";
 import { useProfile } from "@/components/ProfileProvider";
-import { buildRecommendationPlan } from "@/lib/recommendations";
+import { buildRecommendationPlan, formatYen } from "@/lib/recommendations";
 import { loadPreferences } from "@/lib/storage";
 import type { RecommendationPlan } from "@/lib/types";
 
@@ -22,33 +22,30 @@ export default function RecommendPage() {
     return <p className="text-sm text-[var(--muted)]">読み込み中…</p>;
   }
 
-  const hasInput =
-    plan.preferences.skinTypes.length > 0 ||
-    plan.preferences.concerns.length > 0 ||
-    plan.preferences.personalColor;
-
-  if (!hasInput) {
-    return (
-      <div className="space-y-4">
-        <SectionTitle sub="Recommend" title="あなたへのおすすめ" />
-        <Card>
-          <p className="text-sm text-[var(--muted)]">
-            まず肌質・悩み・年齢・予算を設定してください。
-          </p>
-          <Link
-            href="/app/setup"
-            className="mt-4 inline-block rounded-xl bg-[var(--rose-dark)] px-5 py-3 text-sm font-bold text-white"
-          >
-            設定する →
-          </Link>
-        </Card>
-      </div>
-    );
-  }
+  const prefs = plan.preferences;
 
   return (
     <div className="space-y-5">
       <SectionTitle sub="Recommend" title="予算内のおすすめ" />
+
+      <Card className="bg-[var(--cream)]/40">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold">現在の設定</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {prefs.age}歳 · 合計 {formatYen(prefs.monthlyBudget)}
+              {prefs.useCustomBudget && " · カテゴリ別予算"}
+            </p>
+          </div>
+          <Link
+            href="/app/setup"
+            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-[var(--rose-dark)] ring-1 ring-[var(--rose-light)]/40"
+          >
+            変更
+          </Link>
+        </div>
+      </Card>
+
       <RecommendationResults plan={plan} />
     </div>
   );

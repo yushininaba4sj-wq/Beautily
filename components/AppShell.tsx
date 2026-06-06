@@ -21,9 +21,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/app" className="font-display text-xl font-semibold text-[var(--ink)]">
             Beautily
           </Link>
-          <span className="rounded-full bg-[var(--rose-light)]/40 px-2.5 py-0.5 text-[10px] font-bold text-[var(--rose-dark)]">
-            美容プロデューサー
-          </span>
+          <Link
+            href="/app/setup"
+            className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${
+              pathname.startsWith("/app/setup")
+                ? "bg-[var(--rose-dark)] text-white"
+                : "bg-[var(--cream)] text-[var(--rose-dark)] ring-1 ring-[var(--rose-light)]/40"
+            }`}
+          >
+            設定
+          </Link>
         </div>
       </header>
 
