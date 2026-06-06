@@ -1,5 +1,6 @@
 import { ensurePhotosArray } from "./photos";
 import type {
+  BeautyPreferences,
   BeautyProfile,
   ChatMessage,
   ClosetItem,
@@ -8,6 +9,7 @@ import type {
 } from "./types";
 
 const PROFILE_KEY = "beautily_profile";
+const PREFERENCES_KEY = "beautily_preferences";
 const TIMELINE_KEY = "beautily_timeline";
 const CHAT_KEY = "beautily_chat";
 const CLOSET_KEY = "beautily_closet";
@@ -119,4 +121,39 @@ export function loadCosmetics(): CosmeticItem[] {
 
 export function saveCosmetics(items: CosmeticItem[]): void {
   localStorage.setItem(COSMETICS_KEY, JSON.stringify(items));
+}
+
+export function defaultPreferences(profile?: BeautyProfile | null): BeautyPreferences {
+  return {
+    age: 20,
+    monthlyBudget: 10000,
+    skinTypes: [],
+    skinConditions: [],
+    concerns: [],
+    personalColor: profile?.personalColor ?? null,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function loadPreferences(profile?: BeautyProfile | null): BeautyPreferences {
+  if (typeof window === "undefined") return defaultPreferences(profile);
+  try {
+    const raw = localStorage.getItem(PREFERENCES_KEY);
+    if (!raw) return defaultPreferences(profile);
+    const parsed = JSON.parse(raw) as BeautyPreferences;
+    return {
+      ...defaultPreferences(profile),
+      ...parsed,
+      personalColor: parsed.personalColor ?? profile?.personalColor ?? null,
+    };
+  } catch {
+    return defaultPreferences(profile);
+  }
+}
+
+export function savePreferences(prefs: BeautyPreferences): void {
+  localStorage.setItem(
+    PREFERENCES_KEY,
+    JSON.stringify({ ...prefs, updatedAt: new Date().toISOString() }),
+  );
 }

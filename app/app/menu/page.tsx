@@ -6,6 +6,22 @@ import { useProfile } from "@/components/ProfileProvider";
 
 const items = [
   {
+    href: "/app/setup",
+    label: "肌・悩み・予算設定",
+    icon: "◎",
+    desc: "肌質・悩み・年齢・予算を入力",
+    requiresProfile: false,
+    section: "おすすめ",
+  },
+  {
+    href: "/app/recommend",
+    label: "おすすめ商品",
+    icon: "★",
+    desc: "予算内のコスメ・服を提案",
+    requiresProfile: false,
+    section: "おすすめ",
+  },
+  {
     href: "/app/discover",
     label: "新しい私を探す",
     icon: "✦",

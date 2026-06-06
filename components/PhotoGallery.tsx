@@ -22,6 +22,18 @@ export function PhotoGallery({
   compact = false,
 }: PhotoGalleryProps) {
   const canAdd = photos.length < maxPhotos;
+  const sizeClass = compact ? "h-16 w-16" : "h-20 w-20";
+
+  const handleRemove = (photo: UserPhoto) => {
+    if (!onRemove) return;
+    const isLast = photos.length === 1;
+    const ok = window.confirm(
+      isLast
+        ? "最後の写真を削除します。診断写真がなくなりますがよろしいですか？"
+        : `「${photo.label}」を削除しますか？`
+    );
+    if (ok) onRemove(photo.id);
+  };
 
   return (
     <div className="space-y-2">
@@ -39,7 +51,7 @@ export function PhotoGallery({
           </button>
         )}
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 pt-3">
         {photos.map((photo) => {
           const active = photo.id === activeId;
           return (
@@ -51,7 +63,7 @@ export function PhotoGallery({
                   active
                     ? "ring-[var(--rose-dark)]"
                     : "ring-transparent opacity-85 hover:opacity-100"
-                } ${compact ? "h-16 w-16" : "h-20 w-20"}`}
+                } ${sizeClass}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -61,19 +73,20 @@ export function PhotoGallery({
                 />
               </button>
               {active && (
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-[var(--rose-dark)] px-1.5 py-0.5 text-[8px] font-bold text-white">
+                <span className="absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-full bg-[var(--rose-dark)] px-1.5 py-0.5 text-[8px] font-bold text-white">
                   選択中
                 </span>
               )}
-              {onRemove && photos.length > 1 && (
+              {onRemove && (
                 <button
                   type="button"
-                  aria-label="削除"
+                  aria-label={`${photo.label}を削除`}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
-                    onRemove(photo.id);
+                    handleRemove(photo);
                   }}
-                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--ink)] text-[10px] text-white"
+                  className="absolute -right-1.5 -top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--ink)] text-xs font-bold text-white shadow-md ring-2 ring-white"
                 >
                   ×
                 </button>
@@ -85,15 +98,18 @@ export function PhotoGallery({
           <button
             type="button"
             onClick={onAdd}
-            className={`flex shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--rose-light)] bg-[var(--cream)]/80 text-[var(--rose-dark)] ${
-              compact ? "h-16 w-16" : "h-20 w-20"
-            }`}
+            className={`flex shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--rose-light)] bg-[var(--cream)]/80 text-[var(--rose-dark)] ${sizeClass}`}
           >
             <span className="text-xl">＋</span>
             <span className="text-[9px] font-bold">追加</span>
           </button>
         )}
       </div>
+      {onRemove && (
+        <p className="text-[10px] text-[var(--muted)]">
+          写真右上の × で削除できます
+        </p>
+      )}
     </div>
   );
 }

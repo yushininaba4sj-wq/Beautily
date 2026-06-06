@@ -1,19 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Card, SectionTitle, Tag } from "@/components/Card";
 import { useProfile } from "@/components/ProfileProvider";
-import { loadCloset, saveCloset } from "@/lib/storage";
-import type { ClosetItem } from "@/lib/types";
+import { buildRecommendationPlan, formatYen } from "@/lib/recommendations";
+import { loadCloset, loadPreferences, saveCloset } from "@/lib/storage";
+import type { ClosetItem, RecommendationPlan } from "@/lib/types";
 
 export default function ClosetPage() {
   const { profile } = useProfile();
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [name, setName] = useState("");
+  const [plan, setPlan] = useState<RecommendationPlan | null>(null);
 
   useEffect(() => {
     setItems(loadCloset());
-  }, []);
+    setPlan(buildRecommendationPlan(loadPreferences(profile), profile));
+  }, [profile]);
 
   const add = () => {
     if (!name.trim()) return;
@@ -26,17 +30,29 @@ export default function ClosetPage() {
     setName("");
   };
 
-  const suggestions = profile
+  const suggestions = plan
     ? [
-        `今日は「${profile.matchingStyles[0]}」で、${profile.fashion[0]}×${profile.fashion[1] || "きれいめ"}がおすすめ。`,
-        `登録${items.length}点から：白シャツ＋ハイウエストで着回し。`,
-        `足りない服：淡色のニット、きれいめパンツ。`,
+        plan.summary,
+        ...plan.fashion.slice(0, 2).map(
+          (item) =>
+            `「${item.name}」（${formatYen(item.price)}）— ${item.reason}`,
+        ),
+        items.length
+          ? `登録${items.length}点と合わせて、トップス×ボトムスで着回し。`
+          : "手持ち服を登録すると、おすすめとの組み合わせが分かります。",
       ]
-    : ["診断後にコーデ提案が有効になります。"];
+    : ["肌・悩み・予算を設定するとコーデ提案が有効になります。"];
 
   return (
     <div className="space-y-5">
       <SectionTitle title="クローゼット" />
+
+      <Card className="bg-[var(--cream)]/40">
+        <p className="text-sm font-bold">予算内のファッション提案</p>
+        <Link href="/app/recommend" className="mt-2 inline-block text-sm font-bold text-[var(--rose-dark)]">
+          服・アクセのおすすめを見る →
+        </Link>
+      </Card>
 
       <Card>
         <div className="flex gap-2">
@@ -74,6 +90,23 @@ export default function ClosetPage() {
           ))}
         </ul>
       </Card>
+
+      {plan && plan.fashion.length > 0 && (
+        <Card>
+          <p className="text-sm font-bold">おすすめアイテム</p>
+          <ul className="mt-3 space-y-2">
+            {plan.fashion.map((item) => (
+              <li key={item.id} className="rounded-xl bg-[var(--cream)]/40 p-3 text-sm">
+                <div className="flex justify-between gap-2">
+                  <p className="font-bold">{item.brand} {item.name}</p>
+                  <p className="font-bold text-[var(--rose-dark)]">{formatYen(item.price)}</p>
+                </div>
+                <p className="mt-1 text-xs text-[var(--muted)]">{item.reason}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }

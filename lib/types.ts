@@ -1,8 +1,67 @@
+export type SkinType = "乾燥肌" | "脂性肌" | "混合肌" | "敏感肌";
+export type SkinCondition = "赤み" | "くすみ" | "黄ぐすみ" | "毛穴";
+export type SkinConcern = "しわ" | "ニキビ" | "しみ" | "美白" | "保湿" | "毛穴";
+
 export type PersonalColor =
   | "イエベ春"
   | "イエベ秋"
   | "ブルベ夏"
   | "ブルベ冬";
+
+export type ProductArea = "skincare" | "makeup" | "fashion";
+
+export type ProductCategory =
+  | "クレンジング"
+  | "洗顔"
+  | "化粧水"
+  | "美容液"
+  | "乳液"
+  | "クリーム"
+  | "日焼け止め"
+  | "ファンデ"
+  | "コンシーラー"
+  | "チーク"
+  | "アイメイク"
+  | "リップ"
+  | "トップス"
+  | "ボトムス"
+  | "アウター"
+  | "アクセサリー";
+
+export interface BeautyPreferences {
+  age: number;
+  monthlyBudget: number;
+  skinTypes: SkinType[];
+  skinConditions: SkinCondition[];
+  concerns: SkinConcern[];
+  personalColor: PersonalColor | null;
+  updatedAt: string;
+}
+
+export interface ProductRecommendation {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  category: ProductCategory;
+  area: ProductArea;
+  description: string;
+  reason: string;
+  tags: string[];
+}
+
+export interface RecommendationPlan {
+  preferences: BeautyPreferences;
+  skincare: ProductRecommendation[];
+  makeup: ProductRecommendation[];
+  fashion: ProductRecommendation[];
+  skincareTotal: number;
+  makeupTotal: number;
+  fashionTotal: number;
+  grandTotal: number;
+  remainingBudget: number;
+  summary: string;
+}
 
 export type BoneStructure = "ストレート" | "ウェーブ" | "ナチュラル";
 

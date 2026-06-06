@@ -8,7 +8,9 @@ import { shareText } from "@/lib/diagnosis";
 import { getGlowPotential, getTransformationJourney, getVisionMessage } from "@/lib/newSelf";
 
 const quickLinks = [
-  { href: "/app/discover", label: "新しい私を探す", desc: "3つの可能性・伸びしろ", requiresProfile: true, highlight: true },
+  { href: "/app/setup", label: "肌・悩み・予算", desc: "条件を入力しておすすめ生成", requiresProfile: false, highlight: true },
+  { href: "/app/recommend", label: "おすすめ商品", desc: "スキンケア・メイク・服", requiresProfile: false, highlight: true },
+  { href: "/app/discover", label: "新しい私を探す", desc: "3つの可能性・伸びしろ", requiresProfile: true, highlight: false },
   { href: "/app/simulate", label: "シミュレーション", desc: "髪・メイク・服を大胆に試す", requiresProfile: true },
   { href: "/app/timeline", label: "美容タイムライン", desc: "基礎から学ぶ・深掘り", requiresProfile: false },
   { href: "/app/proposals", label: "美容提案", desc: "似合うコーデ一式", requiresProfile: true },

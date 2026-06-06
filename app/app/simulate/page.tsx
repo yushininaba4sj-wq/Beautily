@@ -295,7 +295,7 @@ export default function SimulatePage() {
             photos={photos}
             activeId={profile.activePhotoId ?? activePhoto?.id ?? null}
             onSelect={setActivePhoto}
-            onRemove={photos.length > 1 ? removePhoto : undefined}
+            onRemove={removePhoto}
             maxPhotos={MAX_PHOTOS}
             compact
           />

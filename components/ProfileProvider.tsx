@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   addPhotoToProfile,
+  ensurePhotosArray,
   getActivePhoto,
   getActivePhotoUrl,
   removePhotoFromProfile,
@@ -37,7 +38,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(() => {
-    setProfileState(loadProfile());
+    const loaded = loadProfile();
+    setProfileState(loaded ? ensurePhotosArray(loaded) : null);
   }, []);
 
   useEffect(() => {
@@ -46,8 +48,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const setProfile = useCallback((p: BeautyProfile | null) => {
-    if (p) saveProfile(p);
-    setProfileState(p);
+    const next = p ? ensurePhotosArray(p) : null;
+    if (next) saveProfile(next);
+    setProfileState(next);
   }, []);
 
   const photos = profile?.photos ?? [];
